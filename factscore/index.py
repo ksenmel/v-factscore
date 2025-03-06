@@ -2,6 +2,7 @@ import pickle
 import faiss
 import numpy as np
 from tqdm import tqdm
+from faiss.contrib.ondisk import merge_ondisk
 
 '''
 Faiss supports storing IVF indexes in a file on disk and accessing the file on-the-fly.
@@ -10,11 +11,16 @@ The on-disk index is built by merging the sharded indexes into one big index.
 Useful links: 
 https://github.com/facebookresearch/faiss/wiki/Indexes-that-do-not-fit-in-RAM,
 https://github.com/facebookresearch/faiss/blob/main/demos/demo_ondisk_ivf.py
+https://habr.com/ru/companies/okkamgroup/articles/509204/
 '''
 
+trained_index_name = ""
+indexes_dir = ""
+embeds_path = ""
 
-def get_sharded_indexes(s_start_idx: int, index_capacity: int, trained_index_path: str,
-                        indexes_dir: str, part: int, embeds_file_path: str, part_is_final=False, batch_size=250):
+
+def get_sharded_indexes(start: int, index_capacity: int, part: int, part_is_final=False,
+                        batch_size=250):
     """
     computes embeddings to the titles with ids from <start> to <start + index_capacity> and loads them on the current index
     before using this function, you should already have trained IVF index from faiss, for example:
@@ -24,33 +30,52 @@ def get_sharded_indexes(s_start_idx: int, index_capacity: int, trained_index_pat
     part: number of the current idx
     part_is_final: if the current idx is final
     """
-    index = faiss.read_index(trained_index_path)
+    with open(embeds_path, "rb") as f:
+        titles = pickle.load(f)
+    print(len(titles))
 
-    with open(embeds_file_path, "rb") as f:
-        titles_emb = pickle.load(f)
+    index = faiss.read_index(indexes_dir + trained_index_name)
+    print(index.ntotal)
 
-    s_end_idx = min(s_start_idx + index_capacity, len(titles_emb) - 1)
+    print("start adding")
+    for i in tqdm(range(start, min(start + index_capacity, len(titles)), batch_size)):
 
-    for i in tqdm(range(s_start_idx, s_end_idx, batch_size)):
-        ids = [j for j in range(i, min(i + batch_size, s_end_idx))]
-        # titles_to_add = titles_emb[ids[0]: ids[-1] + 1]
-        titles_to_add = np.array([titles_emb[idx] for idx in ids])
+        ids = [j for j in range(i, min(i + batch_size, len(titles)))]
+        vecs = np.array([titles[idx] for idx in ids])
         if not part_is_final:
-            assert len(titles_to_add) == batch_size, f"batch size is {batch_size}, but got {len(titles_to_add)} embeddings"
-        index.add_with_ids(titles_to_add, ids)
-    faiss.write_index(index, indexes_dir + "/" + "block_%d.index" % part)
+            assert len(vecs) == batch_size, f"batch size is {batch_size}, but got {len(vecs)} embeddings"
+        vecs = np.array(vecs).astype(np.float16)
+        index.add_with_ids(vecs, np.array(ids))
+    faiss.write_index(index, indexes_dir + "block_%d.index" % part)
+    print(index.ntotal)
+
+
+def merge_sharded_indexes(number_of_indexes, final_index_name="all_vecs.index"):
+    '''
+    number_of_indexes: how many sharded indexes you have
+    final_index_name: to what file the merged result will be saved
+    '''
+    print('loading trained index')
+    index = faiss.read_index(indexes_dir + trained_index_name)
+    block_fnames = [
+        indexes_dir + "block_%d.index" % bno
+        for bno in range(1, number_of_indexes)
+    ]
+    merge_ondisk(index, block_fnames, indexes_dir + "merged_index.ivfdata")
+    print("write " + indexes_dir + final_index_name)
+    faiss.write_index(index, indexes_dir + final_index_name)
 
 
 if __name__ == '__main__':
-    index_path = "titles-ivf-1000000.index"
-    embeds_path = "wiki_embeddings-1000.pkl"
+    embeds_path = ""
 
     print("Stage 1")
-    get_sharded_indexes(0, 250, index_path, "indexes", 1, embeds_path, False)
+    get_sharded_indexes(0, 250, 1, False)
     print("Stage 2")
-    get_sharded_indexes(249, 500, index_path, "indexes", 2, embeds_path, False)
+    get_sharded_indexes(250, 500, 2, False)
     print("Stage 3")
-    get_sharded_indexes(499, 750, index_path, "indexes", 3, embeds_path, False)
+    get_sharded_indexes(500, 750, 3, False)
     print("Stage 4")
-    get_sharded_indexes(749, 1000, index_path, "indexes", 4, embeds_path, True)
+    get_sharded_indexes(750, 1000, 4, True)
 
+    merge_sharded_indexes(4)
