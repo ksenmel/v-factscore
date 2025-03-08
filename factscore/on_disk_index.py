@@ -6,7 +6,7 @@ from faiss.contrib.ondisk import merge_ondisk
 
 '''
 Faiss supports storing IVF indexes in a file on disk and accessing the file on-the-fly.
-The simplest approach to do that -- on-disk index.
+The simplest approach to do that is on-disk index.
 The on-disk index is built by merging the sharded indexes into one big index.
 Useful links: 
 https://github.com/facebookresearch/faiss/wiki/Indexes-that-do-not-fit-in-RAM,
@@ -14,21 +14,23 @@ https://github.com/facebookresearch/faiss/blob/main/demos/demo_ondisk_ivf.py
 https://habr.com/ru/companies/okkamgroup/articles/509204/
 '''
 
-trained_index_name = ""
-indexes_dir = ""
-embeds_path = ""
+trained_index_name = "titles-ivf-1000.index"
+indexes_dir = "./indexes/"
+embeds_path = "./wiki_embeddings-1000.pkl"
 
 
 def get_sharded_indexes(start: int, index_capacity: int, part: int, part_is_final=False,
                         batch_size=250):
     """
-    computes embeddings to the titles with ids from <start> to <start + index_capacity> and loads them on the current index
-    before using this function, you should already have trained IVF index from faiss, for example:
-    index = faiss.index_factory(1536, "IVF32768,Flat") (IVF index with 32768 Voronoi cells and no quantization)
+    Computes embeddings to the titles with ids from <start> to <start + index_capacity> and loads them on the sharded index.
+    Before using this function, you should already have trained IVF index from faiss, for example:
+    index = faiss.index_factory(1536, "IVF32768,Flat")
 
-    s_start_idx: from what id to start adding vectors in the index
-    part: number of the current idx
-    part_is_final: if the current idx is final
+    :param start: from what id to start adding vectors in the index
+    :param index_capacity: how many indexes will be in the shard
+    :param part: number of the current shard part
+    :param part_is_final: if the current shard is final
+    :param batch_size: the size of the batch
     """
     with open(embeds_path, "rb") as f:
         titles = pickle.load(f)
@@ -51,10 +53,10 @@ def get_sharded_indexes(start: int, index_capacity: int, part: int, part_is_fina
 
 
 def merge_sharded_indexes(number_of_indexes, final_index_name="all_vecs.index"):
-    '''
-    number_of_indexes: how many sharded indexes you have
-    final_index_name: to what file the merged result will be saved
-    '''
+    """
+    :param number_of_indexes: how many sharded indexes you have
+    :param final_index_name: to what file the merged result will be saved
+    """
     print('loading trained index')
     index = faiss.read_index(indexes_dir + trained_index_name)
     block_fnames = [
@@ -67,7 +69,7 @@ def merge_sharded_indexes(number_of_indexes, final_index_name="all_vecs.index"):
 
 
 if __name__ == '__main__':
-    embeds_path = ""
+    embeds_path = "./wiki_embeddings-1000.pkl"
 
     print("Stage 1")
     get_sharded_indexes(0, 250, 1, False)
