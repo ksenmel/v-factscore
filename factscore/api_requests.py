@@ -1,7 +1,6 @@
 import aiohttp
 import asyncio
 import os
-import pickle
 
 
 class APICompletions:
@@ -35,54 +34,6 @@ class APICompletions:
             # print(failed_results)
             # TODO
         return results
-
-    async def find_non_cached_generations(self, prompts, sample_idx):
-        """
-        if we have already sent a prompt to the model and its generation is in our cache,
-        we'll pull it from the cache and won't send the request again
-
-        returns
-        non_cached_pos: indices of the non-cached generations
-        out: list that is filled with the cached generations
-        (in the generation time it will be refilled with the non-cached generations)
-        """
-        cache_keys = []
-        out = [None for _ in prompts]
-        for i, p in enumerate(prompts):
-            cache_key = f"{p}_{sample_idx}"
-            if cache_key in self.cache_dict:
-                out[i] = self.cache_dict[cache_key]
-            else:
-                cache_keys.append(cache_key)
-        non_cached_pos = [i for i, g in enumerate(out) if g is None]
-        return non_cached_pos, out
-
-    def save_cache(self):
-        # load the latest cache first, since if there were other processes
-        # running in parallel, cache might have been updated
-        for k, v in self.load_cache().items():
-            self.cache_dict[k] = v
-
-        try:
-            with open(self.cache_file, "wb") as f:
-                pickle.dump(self.cache_dict, f)
-        except BaseException:
-            pass
-
-    def load_cache(self, allow_retry=True):
-        if os.path.exists(self.cache_file):
-            while True:
-                try:
-                    with open(self.cache_file, "rb") as f:
-                        cache = pickle.load(f)
-                    break
-                except Exception as e:
-                    if not allow_retry:
-                        assert False
-                    return {}
-        else:
-            cache = {}
-        return cache
 
 
 class APIEmbeddingFunction:
