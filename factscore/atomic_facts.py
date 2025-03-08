@@ -1,14 +1,12 @@
 import asyncio
 import re
 import os
-
 import sys
 from pysbd import Segmenter
 from factscore.api_requests import APICompletions
 
 # how many examples should be?
-SENTENCE_INSTRUCT_PROMPT = """
-Task: Given the following sentence, break it into individual, independent facts.
+SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts.
 
 Example 1:
 Input sentence: Michael Collins (born October 31, 1930) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969.
@@ -119,10 +117,7 @@ class AtomicFactGenerator(object):
         for sentence in sentences:
             prompt = (
                 self.demos
-                + f"""
-                                   Now process the following sentence:\nInput sentence: "{sentence}"\nOutput:
-                                   """
-            )
+                + f"""Now process the following sentence:\nInput sentence: "{sentence}"\nOutput\n:""")
             prompts.append(prompt)
 
         responses = await self.llm.generate(prompts)
@@ -155,8 +150,8 @@ class AtomicFactGenerator(object):
 
 if __name__ == "__main__":
     llm = APICompletions(
-        base_url="",
-        model_name="deepseek-ai/DeepSeek-R1",
+        base_url="https://api.deepinfra.com/v1/openai/chat/completions",
+        model_name="Qwen/Qwen2.5-72B-Instruct",
     )
     generator = AtomicFactGenerator(llm)
 
