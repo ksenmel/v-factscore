@@ -4,9 +4,8 @@ import sys
 import faiss
 import sqlite3
 import numpy as np
-from factscore.api_requests import APIEmbeddingFunction
 
-SPECIAL_SEPARATOR = "####SPECIAL####SEPARATOR####"
+from factscore.api_requests import APIEmbeddingFunction
 
 
 class EmbedRetrieval:
@@ -14,36 +13,32 @@ class EmbedRetrieval:
     def __init__(self, index, data_db, ef: APIEmbeddingFunction):
         self.ef = ef
         self.index = faiss.read_index(index)
-        self.connection = sqlite3.connect(data_db)
 
-    async def search_top_k(self, query, k: int):
+        # need to move this to DocDB? (6M titles in RAM for each call not a good idea)
+        self.connection = sqlite3.connect(data_db)
+        self.cursor = self.connection.cursor()
+        self.cursor.execute("SELECT title FROM documents")
+        self.titles = self.cursor.fetchall()
+
+    async def search_top_k(self, queries, k: int):
         """
         Find k titles with the closest embedding distance to the query.
         """
-        assert isinstance(query, list)
-        embed, _ = await self.ef(query)
-        distances, indices = self.index.search(np.array(embed), k)
-        distances, indices = distances[0], indices[0]
-        # make it tuple
-        texts = []
-        titles = []
+        assert isinstance(queries, list)
 
-        print(indices)
+        vecs, _ = await self.ef(queries)
+        distances, indices = self.index.search(np.array(vecs), k)
+        found_titles = []
 
-        cursor = self.connection.cursor()
-
-        for idx in indices:
-            cursor.execute(f"SELECT title FROM documents WHERE rowid = {idx + 1}")
-            id_results = cursor.fetchall()
-            print(id_results)
-            id_titles = id_results[0]
-            titles.append(id_titles)
-        cursor.close()
-        return titles
+        for query_idx, query_indices in enumerate(indices):
+            for idx in query_indices:
+                res = self.titles[idx]
+                found_titles.append(res)
+        return found_titles
 
 
 if __name__ == "__main__":
-    query = ["Albert Einstein"]
+    queries = ["Albert Einstein", "Alice in Wonderland"]
 
     llm = APIEmbeddingFunction(base_url="https://api.deepinfra.com/v1/openai/embeddings",
                                model_name="sentence-transformers/all-MiniLM-L12-v2",
@@ -53,7 +48,7 @@ if __name__ == "__main__":
                                data_db="",
                                ef=llm)
 
-    result = asyncio.run(retrieval.search_top_k(query=query, k=5))
+    result = asyncio.run(retrieval.search_top_k(queries=queries, k=2))
 
     titles = result
     print(titles)
