@@ -7,20 +7,19 @@ import numpy as np
 
 from factscore.api_requests import APIEmbeddingFunction
 
-
 class EmbedRetrieval:
 
     def __init__(self, index, data_db, ef: APIEmbeddingFunction):
         self.ef = ef
         self.index = faiss.read_index(index)
 
-        # need to move this to DocDB? (6M titles in RAM for each call not a good idea)
+        # need to move this to DocDB?
         self.connection = sqlite3.connect(data_db)
         self.cursor = self.connection.cursor()
         self.cursor.execute("SELECT title FROM documents")
-        self.titles = self.cursor.fetchall()
+        self.titles = [row[0] for row in self.cursor.fetchall()]
 
-    async def search_top_k(self, queries, k: int):
+    async def search(self, queries, k: int):
         """
         Find k titles with the closest embedding distance to the query.
         """
@@ -28,27 +27,36 @@ class EmbedRetrieval:
 
         vecs, _ = await self.ef(queries)
         distances, indices = self.index.search(np.array(vecs), k)
-        found_titles = []
+        k_titles = []
+        k_texts = []
 
-        for query_idx, query_indices in enumerate(indices):
-            for idx in query_indices:
-                res = self.titles[idx]
-                found_titles.append(res)
-        return found_titles
+        for query, ids in enumerate(indices):
+            for idx in ids:
+                title = self.titles[idx]
+
+                self.cursor.execute("SELECT text FROM documents WHERE title = ?", (title,))
+                text = [i[0] for i in self.cursor.fetchall()]
+
+                k_titles.append(title)
+                k_texts.append(text)
+
+        return k_titles, k_texts
+
 
 
 if __name__ == "__main__":
-    queries = ["Albert Einstein", "Alice in Wonderland"]
+    queries = ["Albert Einstein"]
 
     llm = APIEmbeddingFunction(base_url="https://api.deepinfra.com/v1/openai/embeddings",
-                               model_name="sentence-transformers/all-MiniLM-L12-v2",
+                               model_name="sentence-transformers/all-MiniLM-L6-v2",
                                dimensions=384)
 
-    retrieval = EmbedRetrieval(index="",
-                               data_db="",
+    retrieval = EmbedRetrieval(index="ivf.index",
+                               data_db="/Users/kseniia/enwiki-20230401.db",
                                ef=llm)
 
-    result = asyncio.run(retrieval.search_top_k(queries=queries, k=2))
+    result = asyncio.run(retrieval.search(queries=queries, k=5))
 
-    titles = result
+    titles, texts = result
     print(titles)
+    # print(texts)
