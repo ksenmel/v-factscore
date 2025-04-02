@@ -1,4 +1,3 @@
-import asyncio
 import sqlite3
 
 import numpy as np
@@ -13,7 +12,9 @@ SPECIAL_SEPARATOR = "####SPECIAL####SEPARATOR####"
 class DocDB:
     """Sqlite document storage. By default, uses Wikipedia dump from 2023/04/01."""
 
-    def __init__(self, db_path: str, faiss_index: str, ef: APIEmbeddingFunction, table: str):
+    def __init__(
+        self, db_path: str, faiss_index: str, ef: APIEmbeddingFunction, table: str
+    ):
         self.connection = sqlite3.connect(db_path)
         self.ef = ef
 
@@ -27,7 +28,9 @@ class DocDB:
         cursor.execute(f"SELECT title FROM {table}")
         self.titles = [row[0] for row in cursor.fetchall()]
 
-        self.retriever = EmbedRetrieval(index=faiss_index, ef=ef, titles=self.titles, connection=self.connection)
+        self.retriever = EmbedRetrieval(
+            index=faiss_index, ef=ef, titles=self.titles, connection=self.connection
+        )
 
     async def search_text_by_queries(self, queries, k):
         res = await self.retriever.search(queries=queries, k=k)
@@ -54,9 +57,5 @@ def postprocess_text(texts: list[list[str]]):
     for sublist in texts:
         for i in range(len(sublist)):
             sublist[i] = (
-                sublist[i]
-                .replace("<s>", "")
-                .replace(f"{SPECIAL_SEPARATOR}", "")
+                sublist[i].replace("<s>", "").replace(f"{SPECIAL_SEPARATOR}", "")
             )
-
-
