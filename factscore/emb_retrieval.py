@@ -2,13 +2,13 @@ import faiss
 import numpy as np
 
 from sqlite3 import Connection
-
 from factscore.api_requests import APIEmbeddingFunction
 
 
 class EmbedRetrieval:
-
-    def __init__(self, index, titles: list[str], ef: APIEmbeddingFunction, connection: Connection):
+    def __init__(
+        self, index, titles: list[str], ef: APIEmbeddingFunction, connection: Connection
+    ):
         self.ef = ef
         self.index = faiss.read_index(index)
         self.connection = connection
@@ -29,6 +29,8 @@ class EmbedRetrieval:
         for query, ids in enumerate(indices):
             for idx in ids:
                 title = self.titles[idx]
+
+                # TODO: replace documents with argument 'table'
 
                 cursor.execute("SELECT text FROM documents WHERE title = ?", (title,))
                 text = [i[0] for i in cursor.fetchall()]

@@ -37,22 +37,35 @@ class APICompletions:
 
 
 class APIEmbeddingFunction:
-    def __init__(self, base_url, model_name, dimensions=1536):
+    def __init__(self, base_url, model_name, dimensions=384):
         self.base_url = base_url
         self.model_name = model_name
         self.dimensions = dimensions
+
+    # async def __call__(self, inputs: list):
+    #     requests = list(
+    #         map(
+    #             lambda x: {
+    #                 "input": x,
+    #                 "model": self.model_name,
+    #                 "dimensions": self.dimensions,
+    #             },
+    #             inputs,
+    #         )
+    #     )
 
     async def __call__(self, inputs: list):
         requests = list(
             map(
                 lambda x: {
-                    "input": x,
+                    "prompt": x,
                     "model": self.model_name,
-                    "dimensions": self.dimensions,
+                    "dimensionality": self.dimensions,
                 },
                 inputs,
             )
         )
+
         embeds, failed_results = await process_api_requests_from_list(
             requests,
             self.base_url,
@@ -66,7 +79,9 @@ class APIEmbeddingFunction:
 
 def get_embedding_from_response(response):
     try:
-        return response["data"][0]["embedding"]
+        # return response["data"][0]["embedding"]
+        # TODO: add separate logic for localhost models
+        return response["embedding"]  # {'embedding': [...]}
     except KeyError:
         return None
 
