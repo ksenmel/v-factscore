@@ -1,12 +1,11 @@
 import asyncio
 import re
-import os
-import sys
 from pysbd import Segmenter
+
 from factscore.api_requests import APICompletions
 
 # how many examples should be?
-SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts.
+SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts. Ensure that each statement is self-contained and does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations.
 
 Example 1:
 Input sentence: Michael Collins (born October 31, 1930) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969.
@@ -21,55 +20,24 @@ Output:
 - Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969.
 
 Example 2:
-Input sentence: He was an American composer, conductor, and musical director.
+Input Sentence: "Albert Einstein developed the theory of relativity, which revolutionized modern physics."
 Output:
-- He was an American.
-- He was a composer.
-- He was a conductor.
-- He was a musical director.
+- Albert Einstein developed the theory of relativity [[Albert Einstein developed the theory of relativity]]
+- The theory of relativity revolutionized modern physics [[the theory of relativity, which revolutionized modern physics]]
+
 
 Example 3:
-Input sentence: She currently stars in the romantic comedy series, Love and Destiny, which premiered in 2019.
-Output:
-- She currently stars in Love and Destiny.
-- Love and Destiny is a romantic comedy series.
-- Love and Destiny premiered in 2019.
-
-Example 4:
-Input sentence: He is also a producer and engineer, having worked with a wide variety of artists, including Willie Nelson, Tim McGraw, and Taylor Swift.
-Output:
-- He is a producer.
-- He is an engineer.
-- He has worked with a wide variety of artists.
-- Willie Nelson is an artist.
-- He has worked with Willie Nelson.
-- Tim McGraw is an artist.
-- He has worked with Tim McGraw.
-- Taylor Swift is an artist.
-- He has worked with Taylor Swift.
-
-Example 5:
-Input sentence: He made his acting debut in the film The Moon is the Sun's Dream (1992), and continued to appear in small and supporting roles throughout the 1990s.
-Output:
-- He made his acting debut in the film.
-- He made his acting debut in The Moon is the Sun's Dream.
-- The Moon is the Sun's Dream is a film.
-- The Moon is the Sun's Dream was released in 1992.
-- After his acting debut, he appeared in small and supporting roles.
-- After his acting debut, he appeared in small and supporting roles throughout the 1990s.
-
-Example 6:
 Input sentence: In 1963, Collins became one of the third group of astronauts selected by NASA, and he served as the back-up Command Module Pilot for the Gemini 7 mission.
 Output:
 - Collins became an astronaut.
 - Collins became one of the third group of astronauts.
 - Collins became one of the third group of astronauts selected by NASA.
 - Collins became one of the third group of astronauts selected by NASA in 1963.
-- He served as the Command Module Pilot.
-- He served as the back-up Command Module Pilot.
-- He served as the Command Module Pilot for the Gemini 7 mission.
+- Collins served as the Command Module Pilot.
+- Collins served as the back-up Command Module Pilot.
+- Collins served as the Command Module Pilot for the Gemini 7 mission.
 
-Example 7:
+Example 4:
 Input sentence: In addition to his acting roles, Bateman has written and directed two short films and is currently in development on his feature debut.
 Output:
 - Bateman has acting roles.
@@ -150,18 +118,18 @@ class AtomicFactGenerator(object):
 
 if __name__ == "__main__":
     llm = APICompletions(
-        base_url="https://api.deepinfra.com/v1/openai/chat/completions",
-        model_name="Qwen/Qwen2.5-72B-Instruct",
+        base_url="https://openrouter.ai/api/v1/chat/completions",
+        model_name="mistral/ministral-8b",
     )
     generator = AtomicFactGenerator(llm)
 
+    # {sentence: facts from the sentence}
     result = asyncio.run(
-        generator.run(
-            'Elvis Presley, often referred to as the "King of Rock and Roll," was one of the most influential and iconic musicians in the history of popular music. Born on January 8, 1935, in Tupelo, Mississippi, Elvis grew up in a working-class family. His rise to stardom began in the mid-1950s, when he signed with Sun Records in Memphis. His early recordings blended various musical genres, including country, blues, and gospel, and created a new sound that captivated audiences.\n\nElvis\'s first hit single, "Heartbreak Hotel," released in 1956, catapulted him to national fame. His charismatic stage presence, unique voice, and style revolutionized the music industry. His performances, often provocative and energetic, were a sharp contrast to the more conservative music scene of the time, making him a symbol of youth rebellion and cultural change.'
-        )
-    )
+        generator.run("Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."))
+
+    # TODO: delete para spans
 
     atomic_facts, para_breaks = result
-
-    print(atomic_facts)
-    print(para_breaks)
+    
+    # print(atomic_facts)
+    # print(para_breaks)

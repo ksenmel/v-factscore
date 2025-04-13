@@ -17,7 +17,7 @@ class FactScorer:
         completions_base_url="https://openrouter.ai/api/v1/chat/completions",
         completions_model_name="mistral/ministral-8b",
         embedding_base_url="http://localhost:11434/api/embeddings",
-        embedding_model_name="all-minilm",
+        embedding_model_name="nomic-embed-text",
     ):
         self.completions_lm = APICompletions(
             base_url=completions_base_url, model_name=completions_model_name
@@ -82,7 +82,9 @@ class FactScorer:
         Maps `is_supported` boolean label to atoms
         """
         decisions = []
-        prompts = await self.get_rag_prompts_and_passages(atomic_facts, topic, k)
+        prompts, retrieves = await self.get_rag_prompts_and_passages(
+            atomic_facts, topic, k
+        )
         atoms = [p[0] for p in prompts]
 
         answers = await self.completions_lm.generate([p[1] for p in prompts])
@@ -99,6 +101,7 @@ class FactScorer:
 
             decisions.append({"atom": atom, "is_supported": is_supported})
 
+        print(retrieves)
         return decisions
 
     async def get_rag_prompts_and_passages(
@@ -108,7 +111,9 @@ class FactScorer:
         Returns the retrieval part with appropriate info from wiki for each atomic fact
         """
         prompts = []
-        _, texts = await self.db.search_text_by_queries(queries=atomic_facts, k=k)
+        titles, texts = await self.db.search_text_by_queries(queries=atomic_facts, k=k)
+
+        retrieves = []
 
         postprocess_text(texts)
 
@@ -128,15 +133,17 @@ class FactScorer:
 
             prompts.append((atom, rag_prompt))
 
-        return prompts
+            retrieves.append({"title": titles[i], "passages": passages})
+
+        return prompts, retrieves
 
 
 if __name__ == "__main__":
     fs = FactScorer()
     fs.register_knowledge_source(faiss_index="", data_db="", table_name="")
 
-    gen = 'Elvis Presley, often referred to as the "King of Rock and Roll," was one of the most influential and iconic musicians in the history of popular music. Born on January 8, 1935, in Tupelo, Mississippi, Elvis grew up in a working-class family. His rise to stardom began in the mid-1950s, when he signed with Sun Records in Memphis. His early recordings blended various musical genres, including country, blues, and gospel, and created a new sound that captivated audiences.\n\nElvis\'s first hit single, "Heartbreak Hotel," released in 1956, catapulted him to national fame. His charismatic stage presence, unique voice, and style revolutionized the music industry. His performances, often provocative and energetic, were a sharp contrast to the more conservative music scene of the time, making him a symbol of youth rebellion and cultural change.'
+    gen = "Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."
 
-    res = asyncio.run(fs.get_score(topics=["Elvis Presley"], generations=[gen], k=2))
+    res = asyncio.run(fs.get_score(topics=["Albert Einstein"], generations=[gen], k=2))
 
     print(res)

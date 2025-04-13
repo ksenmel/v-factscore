@@ -41,12 +41,13 @@ class DocDB:
         Returns k passages most similar to the topic + question using BM25
         """
         #  .replace("</s>", "")?
+        #  process [''] in output
         texts = text[0].split("</s>")
-        print(texts)
         query = f"{topic} {question.strip()}" if topic else question.strip()
         bm25 = BM25Okapi(texts)
         scores = bm25.get_scores(query.split())
         indices = np.argsort(-scores)[:k]
+
         return [texts[i] for i in indices]
 
 
