@@ -11,6 +11,7 @@ class EmbedRetrieval:
     ):
         self.ef = ef
         self.index = faiss.read_index(index)
+        self.index.nprobe = 16
         self.connection = connection
         self.titles = titles
 
@@ -31,7 +32,6 @@ class EmbedRetrieval:
                 title = self.titles[idx]
 
                 # TODO: replace documents with argument 'table'
-
                 cursor.execute("SELECT text FROM documents WHERE title = ?", (title,))
                 text = [i[0] for i in cursor.fetchall()]
 
