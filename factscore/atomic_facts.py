@@ -4,47 +4,27 @@ from pysbd import Segmenter
 
 from factscore.api_requests import APICompletions
 
-# how many examples should be?
 SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts. Ensure that each statement is self-contained and does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations.
 
 Example 1:
-Input sentence: Michael Collins (born October 31, 1930) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969.
-Output:
-- Michael Collins was born on October 31, 1930.
-- Michael Collins is retired.
-- Michael Collins is an American.
-- Michael Collins was an astronaut.
-- Michael Collins was a test pilot.
-- Michael Collins was the Command Module Pilot.
-- Michael Collins was the Command Module Pilot for the Apollo 11 mission.
-- Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969.
-
-Example 2:
 Input Sentence: "Albert Einstein developed the theory of relativity, which revolutionized modern physics."
 Output:
-- Albert Einstein developed the theory of relativity [[Albert Einstein developed the theory of relativity]]
-- The theory of relativity revolutionized modern physics [[the theory of relativity, which revolutionized modern physics]]
+- Albert Einstein developed the theory of relativity
+- The theory of relativity revolutionized modern physics
 
+Example 2:
+Input Sentence: "Plants require sunlight to carry out photosynthesis, a process that converts light energy into chemical energy stored in glucose molecules, whish is essential for plant growth and development."
+- Plants require sunlight to carry out photosynthesis
+- Photosynthesis is a process that converts light energy into chemical energy stored in glucose molecules
+- Photosynthesis is essential for plant growth and development
 
 Example 3:
-Input sentence: In 1963, Collins became one of the third group of astronauts selected by NASA, and he served as the back-up Command Module Pilot for the Gemini 7 mission.
-Output:
-- Collins became an astronaut.
-- Collins became one of the third group of astronauts.
-- Collins became one of the third group of astronauts selected by NASA.
-- Collins became one of the third group of astronauts selected by NASA in 1963.
-- Collins served as the Command Module Pilot.
-- Collins served as the back-up Command Module Pilot.
-- Collins served as the Command Module Pilot for the Gemini 7 mission.
-
-Example 4:
-Input sentence: In addition to his acting roles, Bateman has written and directed two short films and is currently in development on his feature debut.
-Output:
-- Bateman has acting roles.
-- Bateman has written two short films.
-- Bateman has directed two short films.
-- Bateman is currently in development on his feature debut.
-
+Input Sentence: "Michael Collins (October 31, 1930 – April 28, 2021) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969."
+- Michael Collins was born on October 31, 1930
+- Michael Collins died on April 28, 2021
+- Michael Collins is a retired American astronaut
+- Michael Collins is a retired test pilot
+- Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969
 """
 
 
@@ -53,7 +33,7 @@ class AtomicFactGenerator(object):
 
     def __init__(self, llm: APICompletions):
         self.llm = llm
-        self.segmenter = Segmenter(language="en", clean=False)
+        self.segmenter = Segmenter(language="en")
 
     def run(self, generation):
         """
@@ -125,11 +105,8 @@ if __name__ == "__main__":
 
     # {sentence: facts from the sentence}
     result = asyncio.run(
-        generator.run("Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."))
-
-    # TODO: delete para spans
+        generator.run("During World War II, Turing worked for the Government Code and Cypher School at Bletchley Park, Britain's codebreaking centre that produced Ultra intelligence."))
 
     atomic_facts, para_breaks = result
     
-    # print(atomic_facts)
-    # print(para_breaks)
+    print(atomic_facts)
