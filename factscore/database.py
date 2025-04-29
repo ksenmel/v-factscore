@@ -1,6 +1,6 @@
 import sqlite3
 
-import numpy as np
+from pysbd import Segmenter
 from rank_bm25 import BM25Okapi
 
 from factscore.api_requests import APIEmbeddingFunction
@@ -32,31 +32,34 @@ class DocDB:
             index=faiss_index, ef=ef, titles=self.titles, connection=self.connection
         )
 
+        self.segmenter = Segmenter(language="en")
+        
     async def search_text_by_queries(self, queries, k):
         res = await self.retriever.search(queries=queries, k=k)
         return res
+    
 
-    def get_bm25_passages(self, topic, question, text, k):
+    def get_bm25_passages(self, fact, texts, n):
         """
-        Returns k passages most similar to the topic + question using BM25
+        Returns k passages most similar to the fact using BM25
         """
-        #  .replace("</s>", "")?
-        #  process [''] in output
-        texts = text[0].split("</s>")
-        query = f"{topic} {question.strip()}" if topic else question.strip()
-        bm25 = BM25Okapi(texts)
-        scores = bm25.get_scores(query.split())
-        indices = np.argsort(-scores)[:k]
+        query = fact 
+        passages = []
 
-        return [texts[i] for i in indices]
+        for text in texts:
+                corpus = self.segmenter.segment(text[0])
 
+                tokenized_corpus = []
+                for doc in corpus:
+                        doc_tokens = doc.split()
+                        tokenized_corpus.append(doc_tokens)
+                
+                bm25 = BM25Okapi(tokenized_corpus)
 
-def postprocess_text(texts: list[list[str]]):
-    """
-    Needed to process text before using BM25 and RAG
-    """
-    for sublist in texts:
-        for i in range(len(sublist)):
-            sublist[i] = (
-                sublist[i].replace("<s>", "").replace(f"{SPECIAL_SEPARATOR}", "")
-            )
+                tokenized_query = query.split(" ")
+                
+                doc = bm25.get_top_n(tokenized_query, corpus, n)
+
+                passages.append(doc)
+
+        return passages

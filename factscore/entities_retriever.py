@@ -26,7 +26,7 @@ Output:
 """
 
 
-class EntitiesRetriever:
+class EntitiesRetriever(object):
     demos = INSTRUCT_PROMPT
 
     def __init__(self, llm: APICompletions):
@@ -54,11 +54,6 @@ class EntitiesRetriever:
             return sent_to_entities
 
     async def text_to_entities(self, text):
-        """
-        Breaks LLM's output into entities and remove from them any llm notes
-        (sometimes llm returns outputs like "<fact>\n\n<note of the llm>",
-        that is inappropriate because we want just the fact without any extra information)
-        """
         facts = text.split("- ")[1:]
         facts = [
             fact.strip()[:-1]
@@ -71,22 +66,3 @@ class EntitiesRetriever:
             if facts[-1][-1] != ".":
                 facts[-1] = facts[-1]
         return facts
-
-
-if __name__ == "__main__":
-    llm = APICompletions(
-        base_url="https://openrouter.ai/api/v1/chat/completions",
-        model_name="mistral/ministral-8b",
-    )
-    retiever = EntitiesRetriever(llm)
-
-    # {sentence: entities from the sentence}
-    result = asyncio.run(
-        retiever.run(
-            ["In 1954, Elvis Presley began his career at Sun Records in Memphis."]
-        )
-    )
-
-    entities = result
-
-    print(entities)

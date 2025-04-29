@@ -13,18 +13,21 @@ Output:
 - The theory of relativity revolutionized modern physics
 
 Example 2:
-Input Sentence: "Plants require sunlight to carry out photosynthesis, a process that converts light energy into chemical energy stored in glucose molecules, whish is essential for plant growth and development."
-- Plants require sunlight to carry out photosynthesis
-- Photosynthesis is a process that converts light energy into chemical energy stored in glucose molecules
-- Photosynthesis is essential for plant growth and development
-
-Example 3:
 Input Sentence: "Michael Collins (October 31, 1930 – April 28, 2021) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969."
 - Michael Collins was born on October 31, 1930
 - Michael Collins died on April 28, 2021
 - Michael Collins is a retired American astronaut
 - Michael Collins is a retired test pilot
 - Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969
+
+Example 4:
+Input sentence: In addition to his acting roles, Bateman has written and directed two short films and is currently in development on his feature debut.
+Output:
+- Bateman has acting roles.
+- Bateman has written two short films.
+- Bateman has directed two short films.
+- Bateman is currently in development on his feature debut.
+
 """
 
 
@@ -94,19 +97,3 @@ class AtomicFactGenerator(object):
             if facts[-1][-1] != ".":
                 facts[-1] = facts[-1] + "."
         return facts
-
-
-if __name__ == "__main__":
-    llm = APICompletions(
-        base_url="https://openrouter.ai/api/v1/chat/completions",
-        model_name="mistral/ministral-8b",
-    )
-    generator = AtomicFactGenerator(llm)
-
-    # {sentence: facts from the sentence}
-    result = asyncio.run(
-        generator.run("During World War II, Turing worked for the Government Code and Cypher School at Bletchley Park, Britain's codebreaking centre that produced Ultra intelligence."))
-
-    atomic_facts, para_breaks = result
-    
-    print(atomic_facts)
