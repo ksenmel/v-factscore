@@ -1,14 +1,14 @@
 import asyncio
 import itertools
-from typing import List, Tuple
 import numpy as np
+
+from typing import List, Tuple
 
 from factscore.api_requests import APICompletions
 from factscore.atomic_facts import AtomicFactGenerator
 from factscore.api_requests import APIEmbeddingFunction
 from factscore.database import DocDB
-
-from factscore.database import postprocess_text
+from factscore.entities_retriever import EntitiesRetriever
 
 
 class FactScorer:
@@ -26,7 +26,7 @@ class FactScorer:
             base_url=embedding_base_url, model_name=embedding_model_name
         )
         self.af_generator = AtomicFactGenerator(llm=self.completions_lm)
-        self.db = None
+        self.entities_retriever = EntitiesRetriever(llm=self.completions_lm)
 
     def register_knowledge_source(
         self,
@@ -41,7 +41,7 @@ class FactScorer:
             table=table_name,
         )
 
-    async def get_score(self, topics: list, generations: list, k=5):
+    async def get_score(self, generations: list, k=2):
         """
         Computes factscore for each generation
 
@@ -49,13 +49,12 @@ class FactScorer:
         generations: the generations we try to score.
         k: how many articles we want to add to the RAG context.
         """
-
         scores, decisions = [], []
 
-        for topic, gen in zip(topics, generations):
-            facts, _ = await self.af_generator.run(
-                gen
-            )  # ({sentence: [facts]}, [spans of the paragraphs])
+        for gen in generations:
+
+            facts, _ = await self.af_generator.run(gen) 
+
             gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
             if len(gen_atoms) == 0:
@@ -63,87 +62,90 @@ class FactScorer:
                 decisions.append(None)
                 continue
 
-            generation_decisions = await self.is_supported(gen_atoms, [topic], k=k)
+            atoms_entities = await self.entities_retriever.run(gen_atoms)
 
-            if len(generation_decisions) > 0:
-                score = np.mean([d["is_supported"] for d in generation_decisions])
-                decisions.append(generation_decisions)
-                scores.append(score)
+            generation_decisions = await self.is_supported(atoms_entities, k=k)
+    
+            score = np.mean([d for d in generation_decisions.values()])
 
-        out = {
-            "decisions": decisions,
-            "scores": scores,
-        }
+            decisions.append(generation_decisions)
+            scores.append(score)
+
+            out = {
+                "decisions": decisions,
+                "scores": scores,
+            }
 
         return out
 
-    async def is_supported(self, atomic_facts, topic: str = None, k=2):
+    async def is_supported(self, atoms_entities, k=2):
         """
         Maps `is_supported` boolean label to atoms
         """
-        decisions = []
-        prompts, retrieves = await self.get_rag_prompts_and_passages(
-            atomic_facts, topic, k
-        )
-        atoms = [p[0] for p in prompts]
+        decisions = {}
+        prompts = await self.get_rag_prompts_and_passages(atoms_entities, k)
 
+        atoms = [p[0] for p in prompts]
         answers = await self.completions_lm.generate([p[1] for p in prompts])
 
-        for answer, atom in zip(answers, atoms):
-            generated_answer = answer.lower()
+        print(answers)
 
-            if "true" in generated_answer:
+        for answer, atom in zip(answers, atoms):
+            answer = answer.lower()
+
+            if "true" in answer:
                 is_supported = True
-            if "false" in generated_answer:
+                decisions[atom] = is_supported
+            if "false" in answer:
                 is_supported = False
+                decisions[atom] = is_supported
             else:
                 continue
+        
+        print(decisions)
 
-            decisions.append({"atom": atom, "is_supported": is_supported})
-
-        print(retrieves)
         return decisions
 
-    async def get_rag_prompts_and_passages(
-        self, atomic_facts, topic: str, k: int
-    ) -> List[Tuple[str, str]]:
+
+    async def get_rag_prompts_and_passages(self, atoms_entities, k: int) -> List[Tuple[str, str]]:
         """
-        Returns the retrieval part with appropriate info from wiki for each atomic fact
+        Search relevant titles, texts in db and Returns the retrieval part with appropriate info from wiki for each atomic fact
         """
         prompts = []
-        titles, texts = await self.db.search_text_by_queries(queries=atomic_facts, k=k)
+        atoms_entities_in_db = {}
 
-        retrieves = []
+        for atom, ents in atoms_entities.items():
+            titles, texts = await self.db.search_text_by_queries(queries=ents, k=k)
+            
+            atoms_entities_in_db[atom] = titles 
 
-        postprocess_text(texts)
+            atom_passages = self.db.get_bm25_passages(fact=atom, texts=texts, n=k)
 
-        for i, atom in enumerate(atomic_facts):
-            passages = self.db.get_bm25_passages(topic, atom, texts[i], k=k)
-
-            rag_prompt = f"Task: Answer the question about {topic} based on the given context.\n\n"
-            for psg in reversed(passages):
+            rag_prompt = f"Task: Answer the question based on the given context.\n\n"
+            for psg in reversed(atom_passages):
                 context = f"Text: {psg}\n"
                 rag_prompt += context
 
             rag_prompt += (
-                f'\n\nInput: "{atom.strip()}" True or False? '
-                "Answer True if the information is supported by the context above and False otherwise.\n"
-                "Output: "
-            )
+                    f'\n\Question: "{atom.strip()}" True or False? '
+                    "Answer True if the information is supported by the context above and False otherwise.\n"
+                    "Output: "
+                )
 
             prompts.append((atom, rag_prompt))
 
-            retrieves.append({"title": titles[i], "passages": passages})
-
-        return prompts, retrieves
+        print(atoms_entities_in_db)
+        return prompts
 
 
 if __name__ == "__main__":
     fs = FactScorer()
     fs.register_knowledge_source(faiss_index="", data_db="", table_name="")
+    print("DB registered!")
 
-    gen = "Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."
+    gen1 = ["Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."]
+    gen2 = ["During World War II, Alan Turing worked for the Government Code and Cypher School at Bletchley Park, Britain's codebreaking centre that produced Ultra intelligence."]
 
-    res = asyncio.run(fs.get_score(topics=["Albert Einstein"], generations=[gen], k=2))
+    res = asyncio.run(fs.get_score(generations=gen2, k=2))
 
     print(res)

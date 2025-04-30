@@ -1,28 +1,39 @@
-import sqlite3
 import faiss
 import numpy as np
+import os
+import sqlite3
 
-from tqdm import tqdm
 from faiss.contrib.ondisk import merge_ondisk
+from tqdm import tqdm
+
 from factscore.api_requests import APIEmbeddingFunction
 
 '''
 Faiss supports storing IVF indexes in a file on disk and accessing the file on-the-fly.
-The simplest approach to do that is on-disk index.
 The on-disk index is built by merging the sharded indexes into one big index.
-Useful links: 
+
 https://github.com/facebookresearch/faiss/wiki/Indexes-that-do-not-fit-in-RAM,
-https://github.com/facebookresearch/faiss/blob/main/demos/demo_ondisk_ivf.py
-https://habr.com/ru/companies/okkamgroup/articles/509204/
 '''
 
+trained_index_path = ""
+index_capacity = 500000
+indexes_dir = ""
+db_path = ""
+
+connection = sqlite3.connect(db_path)
+cursor = connection.cursor()
+results = cursor.execute(f"SELECT title FROM documents")
+titles = results.fetchall()
+
+ef = APIEmbeddingFunction(base_url="",
+                          model_name=""
+                          )
 
 async def get_sharded_indexes(start: int, index_capacity: int, part: int, part_is_final=False,
-                        batch_size=250):
+                        batch_size=1000):
     """
     Computes embeddings to the titles with ids from <start> to <start + index_capacity> and loads them on the sharded index.
-    Before using this function, you should already have trained IVF index from faiss, for example:
-    index = faiss.index_factory(1536, "IVF32768,Flat")
+    Before using this function, you should already have trained IVF index from faiss
 
     :param start: from what id to start adding vectors in the index
     :param index_capacity: how many indexes will be in the shard
@@ -30,13 +41,7 @@ async def get_sharded_indexes(start: int, index_capacity: int, part: int, part_i
     :param part_is_final: if the current shard is final
     :param batch_size: the size of the batch
     """
-    connection = sqlite3.connect(db_path)
-    cursor = connection.cursor()
-    results = cursor.execute(f"SELECT title FROM documents")
-    titles = results.fetchall()
-    ef = APIEmbeddingFunction(base_url="https://api.deepinfra.com/v1/openai/embeddings",
-                               model_name="sentence-transformers/all-MiniLM-L12-v2",
-                               dimensions=384)
+    print(f"Stage {part}")
 
     index = faiss.read_index(trained_index_path)
 
@@ -45,9 +50,11 @@ async def get_sharded_indexes(start: int, index_capacity: int, part: int, part_i
         ids = [j for j in range(i, min(i + batch_size, len(titles)))]
         titles_to_add = list(map(lambda x: str(x[0]), titles[ids[0]: ids[-1] + 1]))
         vecs, _ = await ef(titles_to_add)
+
         if not part_is_final:
             assert len(vecs) == batch_size, f"batch size is {batch_size}, but got {len(vecs)} embeddings"
-        vecs = np.array(vecs).astype(np.float16)
+
+        vecs = np.array(vecs).astype(np.float32)
         index.add_with_ids(vecs, np.array(ids))
     faiss.write_index(index, indexes_dir + "block_%d.index" % part)
 
@@ -66,20 +73,3 @@ def merge_sharded_indexes(number_of_indexes, final_index_name="all_vecs.index"):
     merge_ondisk(index, block_fnames, indexes_dir + "merged_index.ivfdata")
     print("write " + indexes_dir + final_index_name)
     faiss.write_index(index, indexes_dir + final_index_name)
-
-
-async def main():
-    print("Stage 1")
-    await get_sharded_indexes(0, index_capacity, 1, False)
-    print("Stage 2")
-    await get_sharded_indexes(250000, index_capacity, 2, False)
-    print("Stage 3")
-    await get_sharded_indexes(500000, index_capacity, 3, False)
-    print("Stage 4")
-    await get_sharded_indexes(750000, index_capacity, 4, True)
-
-    merge_sharded_indexes(4)
-
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
