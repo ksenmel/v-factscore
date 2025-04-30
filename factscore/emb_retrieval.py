@@ -11,7 +11,13 @@ class EmbedRetrieval:
     ):
         self.ef = ef
         self.index = faiss.read_index(index)
-        self.index.nprobe = 16
+        """
+        Setting nprobe (default nprobe is 1) defines how many nearby Voroni cells to search.
+
+        The nprobe parameter is always a way of adjusting the tradeoff between speed and accuracy 
+        of the result. Setting nprobe = nlist gives the same result as the brute-force search (but slower)
+        """
+        self.index.nprobe = 8
 
         self.connection = connection
         self.titles = titles
@@ -23,7 +29,8 @@ class EmbedRetrieval:
         assert isinstance(queries, list)
 
         vecs, _ = await self.ef(queries)
-        _, indices = self.index.search(np.array(vecs), k)
+        vecs = np.array(vecs)
+        _, indices = self.index.search(vecs, k)
         k_titles = []
         k_texts = []
 
