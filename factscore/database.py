@@ -10,7 +10,7 @@ SPECIAL_SEPARATOR = "####SPECIAL####SEPARATOR####"
 
 
 class DocDB:
-    """Sqlite document storage. By default, uses Wikipedia dump from 2023/04/01."""
+    """Sqlite document storage. By default, uses Wikipedia dump from 2023/04/01"""
 
     def __init__(
         self, db_path: str, faiss_index: str, ef: APIEmbeddingFunction, table: str
@@ -33,33 +33,32 @@ class DocDB:
         )
 
         self.segmenter = Segmenter(language="en")
-        
+
     async def search_text_by_queries(self, queries, k):
         res = await self.retriever.search(queries=queries, k=k)
         return res
-    
 
     def get_bm25_passages(self, fact, texts, n):
         """
         Returns k passages most similar to the fact using BM25
         """
-        query = fact 
+        query = fact
         passages = []
 
         for text in texts:
-                corpus = self.segmenter.segment(text[0])
+            corpus = self.segmenter.segment(text[0])
 
-                tokenized_corpus = []
-                for doc in corpus:
-                        doc_tokens = doc.split()
-                        tokenized_corpus.append(doc_tokens)
-                
-                bm25 = BM25Okapi(tokenized_corpus)
+            tokenized_corpus = []
+            for doc in corpus:
+                doc_tokens = doc.split()
+                tokenized_corpus.append(doc_tokens)
 
-                tokenized_query = query.split(" ")
-                
-                doc = bm25.get_top_n(tokenized_query, corpus, n)
+            bm25 = BM25Okapi(tokenized_corpus)
 
-                passages.append(doc)
+            tokenized_query = query.split(" ")
+
+            doc = bm25.get_top_n(tokenized_query, corpus, n)
+
+            passages.append(doc)
 
         return passages

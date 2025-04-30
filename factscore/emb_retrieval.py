@@ -24,7 +24,7 @@ class EmbedRetrieval:
 
     async def search(self, queries, k: int):
         """
-        Find k titles with the closest embedding distance to the query.
+        Find k titles with the closest embedding distance to the query
         """
         assert isinstance(queries, list)
 

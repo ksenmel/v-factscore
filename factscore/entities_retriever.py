@@ -1,4 +1,3 @@
-import asyncio
 import re
 
 from factscore.api_requests import APICompletions
@@ -18,15 +17,21 @@ Output:
 - Michael Collins
 
 Example 3:
-Input Sentence: "Photosynthesis is essential for plant growth and development"
+Input Sentence: "Photosynthesis is essential for plant growth and development."
 Output:
 - Photosynthesis
 - Plant
 
+Example 4:
+Input Sentence: "Hermann Einstein and Pauline Koch were middle-class."
+Output:
+- Hermann Einstein
+- Pauline Koch
+
 """
 
 
-class EntitiesRetriever(object):
+class EntitiesRetriever:
     demos = INSTRUCT_PROMPT
 
     def __init__(self, llm: APICompletions):
@@ -34,6 +39,7 @@ class EntitiesRetriever(object):
 
     def run(self, sentences):
         assert isinstance(sentences, list), "generation must be a list"
+
         return self.get_entities(sentences)
 
     async def get_entities(self, sentences):

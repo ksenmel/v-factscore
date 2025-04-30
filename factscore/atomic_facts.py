@@ -1,4 +1,3 @@
-import asyncio
 import re
 from pysbd import Segmenter
 
@@ -68,12 +67,13 @@ class AtomicFactGenerator(object):
         for sentence in sentences:
             prompt = (
                 self.demos
-                + f"""Now process the following sentence:\nInput sentence: "{sentence}"\nOutput\n:""")
+                + f"""Now process the following sentence:\nInput sentence: "{sentence}"\nOutput\n:"""
+            )
             prompts.append(prompt)
 
         responses = await self.llm.generate(prompts)
 
-        sent_to_facts = {}  # dict {sentence: facts from the sentence}
+        sent_to_facts = {}
         if responses is not None:
             for i, output in enumerate(responses):
                 sent_to_facts[sentences[i]] = await self.text_to_facts(output)
@@ -81,9 +81,7 @@ class AtomicFactGenerator(object):
 
     async def text_to_facts(self, text):
         """
-        Breaks LLM's output into facts and remove from them any llm notes
-        (sometimes llm returns outputs like "<fact>\n\n<note of the llm>",
-        that is inappropriate because we want just the fact without any extra information)
+        Breaks LLM's output into facts removing all LLM extra notes
         """
         facts = text.split("- ")[1:]
         facts = [
