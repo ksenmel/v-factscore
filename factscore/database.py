@@ -1,8 +1,5 @@
 import sqlite3
 
-from pysbd import Segmenter
-from rank_bm25 import BM25Okapi
-
 from factscore.api_requests import APIEmbeddingFunction
 from factscore.emb_retrieval import EmbedRetrieval
 
