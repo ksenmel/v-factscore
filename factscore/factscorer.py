@@ -7,7 +7,8 @@ from rank_bm25 import BM25Okapi
 from typing import List, Tuple
 
 from factscore.api_requests import APICompletions
-from factscore.atomic_facts import AtomicFactGenerator
+# from factscore.atomic_facts import AtomicFactGenerator
+from factscore.atomic_facts import GenerationAtomicFactGenerator
 from factscore.api_requests import APIEmbeddingFunction
 from factscore.database import DocDB
 from factscore.entities_retriever import EntitiesRetriever
@@ -16,8 +17,8 @@ from factscore.entities_retriever import EntitiesRetriever
 class FactScorer:
     def __init__(
         self,
-        completions_base_url="https://openrouter.ai/api/v1/chat/completions",
-        completions_model_name="mistral/ministral-8b",
+        completions_base_url="http://localhost:11434/api/chat",
+        completions_model_name="gemma3:1b",
         embedding_base_url="http://localhost:11434/api/embeddings",
         embedding_model_name="nomic-embed-text",
     ):
@@ -27,7 +28,7 @@ class FactScorer:
         self.embeddings_lm = APIEmbeddingFunction(
             base_url=embedding_base_url, model_name=embedding_model_name
         )
-        self.af_generator = AtomicFactGenerator(llm=self.completions_lm)
+        self.af_generator = GenerationAtomicFactGenerator(llm=self.completions_lm)
         self.entities_retriever = EntitiesRetriever(llm=self.completions_lm)
 
         self.segmenter = self.af_generator.segmenter
@@ -56,24 +57,21 @@ class FactScorer:
         scores, decisions = [], []
 
         for gen in generations:
-
             start_time = time.time()
-            facts, _ = await self.af_generator.run(gen) 
-            end_time = time.time()
-
-            print(f"Generated atomics for {end_time - start_time} seconds")
+            facts = await self.af_generator.run(gen) 
 
             gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
-            start_time = time.time()
             atoms_entities = await self.entities_retriever.run(gen_atoms)
-            end_time = time.time()
-
-            print(f"Retrieved entities for {end_time - start_time} seconds")
 
             generation_decisions = await self.is_supported(atoms_entities, k=k)
     
             score = np.mean([d for d in generation_decisions.values()])
+            score = round(score, 4)
+
+            end_time = time.time()
+            total_process_time = end_time - start_time
+            total_process_time = round(total_process_time, 4)
 
             decisions.append(generation_decisions)
             scores.append(score)
@@ -81,6 +79,7 @@ class FactScorer:
             out = {
                 "decisions": decisions,
                 "scores": scores,
+                "process_time": total_process_time
             }
 
         return out
@@ -132,8 +131,6 @@ class FactScorer:
             sents = self.segmenter.segment(text[0])
             corpus.extend(sents)
 
-        print(corpus)
-
         tokenized_corpus = [doc.split(" ") for doc in corpus]
 
         bm25 = BM25Okapi(tokenized_corpus)
@@ -167,15 +164,11 @@ if __name__ == "__main__":
     fs.register_knowledge_source(faiss_index="/Users/kseniia/factscore/indexes/all_vecs.index", data_db="/Users/kseniia/enwiki-20230401.db", table_name="documents")
     print("DB registered!")
 
-    gen1 = "Albert Einstein was born on March 14, 1879, in the German city of Ulm beside the Danube River. His parents, Hermann Einstein and Pauline Koch, were middle-class secular Jews."
-    gen2 = "During World War II, Alan Turing worked for the Government Code and Cypher School at Bletchley Park, Britain's codebreaking centre that produced Ultra intelligence."
-    gen3 = "Elvis Presley (1935–1977) was an American singer and actor widely regarded as the 'King of Rock and Roll'. "
-
-    gen4 = "Elvis Presley (1935–1977) was an American singer and actor widely regarded as the “King of Rock and Roll.” Elvis Presley is one of the most significant cultural icons of the 20th century and helped revolutionize popular music with his energetic performance style, powerful voice, and charismatic stage presence. Born on January 8, 1935, in Tupelo, Mississippi, Elvis Presley moved to Memphis, Tennessee, as a teenager. In 1954, Elvis Presley began his music career with Sun Records, blending country, blues, and gospel influences into a new sound that would come to be known as rock and roll. His breakout hit, “Heartbreak Hotel,” in 1956 launched him to national fame. In addition to music, Elvis Presley had a successful film career, starring in over 30 movies throughout the 1960s. After a brief break from live performances, Elvis Presley made a legendary comeback with a 1968 TV special and went on to perform sold-out shows in Las Vegas during the 1970s. Despite his success, Elvis Presley struggled with health problems and prescription drug dependence. Elvis Presley died of a heart attack on August 16, 1977, at his home, Graceland, in Memphis, at age 42."
-
-    start_time = time.time()
-    res = asyncio.run(fs.get_score(generations=[gen4], k=2))
-    end_time = time.time()
+    gen1 = "Jessie Mae Brown Beavers (born 1908, date of death unknown) was an African-American social worker, community leader, and activist who played a significant role in promoting civil rights and social justice in Los Angeles, California, during the mid-20th century. She earned her bachelor's degree in social work from the University of California, Los Angeles (UCLA) and later pursued her master's degree from the University of Southern California (USC)."
+    gen2 = "Elvis Presley (1935–1977) was an American singer and actor, widely celebrated as the 'King of Rock and Roll'. He became one of the most influential figures in 20th-century popular culture through his music, charisma, and groundbreaking performance style. Born on January 8, 1935, in Tupelo, Mississippi, Elvis grew up in a modest household with a strong influence from gospel music. His family later moved to Memphis, Tennessee, where he was exposed to a blend of blues, country, and rhythm & blues — elements that would shape his unique musical style."
+    res = asyncio.run(fs.get_score(generations=[gen2], k=2))
 
     print(res)
-    print(f"Processed whole program for {end_time - start_time} seconds")
+
+    print(res['scores'][0])
+    print(res['process_time'])
