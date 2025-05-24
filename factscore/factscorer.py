@@ -67,7 +67,7 @@ class FactScorer:
             while attempt < max_retries and not success:
                 try: 
                     start_time = time.time()
-
+                    
                     facts = await self.af_generator.run(gen) 
 
                     gen_atoms = list(itertools.chain.from_iterable(facts.values()))
@@ -88,8 +88,6 @@ class FactScorer:
                     success = True
                     print(results)
 
-                    return results
-
                 except Exception as e:
                     attempt += 1
                     print(f"ERROR {e} for generation {gen}. Attempt {attempt}/{max_retries}")
@@ -101,6 +99,8 @@ class FactScorer:
                         results["scores"].append(0)
                         results["process_time"].append(0)
                     pass
+
+        return results
 
     async def is_supported(self, atoms_entities, k=2):
         """
