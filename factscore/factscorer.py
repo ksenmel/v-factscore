@@ -54,35 +54,53 @@ class FactScorer:
         generations: the generations we try to score.
         k: how many articles we want to add to the RAG context.
         """
-        scores, decisions = [], []
-
-        for gen in generations:
-            start_time = time.time()
-            facts = await self.af_generator.run(gen) 
-
-            gen_atoms = list(itertools.chain.from_iterable(facts.values()))
-
-            atoms_entities = await self.entities_retriever.run(gen_atoms)
-
-            generation_decisions = await self.is_supported(atoms_entities, k=k)
-    
-            score = np.mean([d for d in generation_decisions.values()])
-            score = round(score, 4)
-
-            end_time = time.time()
-            total_process_time = end_time - start_time
-            total_process_time = round(total_process_time, 4)
-
-            decisions.append(generation_decisions)
-            scores.append(score)
-
-            out = {
-                "decisions": decisions,
-                "scores": scores,
-                "process_time": total_process_time
+        results = {
+                "decisions": [],
+                "scores": [],
+                "process_time": []
             }
+        
+        max_retries = 3
+        for gen in generations:
+            attempt = 0
+            success = False
+            while attempt < max_retries and not success:
+                try: 
+                    start_time = time.time()
 
-        return out
+                    facts = await self.af_generator.run(gen) 
+
+                    gen_atoms = list(itertools.chain.from_iterable(facts.values()))
+
+                    atoms_entities = await self.entities_retriever.run(gen_atoms)
+                    
+                    gen_decisions = await self.is_supported(atoms_entities, k=k)
+
+                    end_time = time.time()
+            
+                    score = round(np.mean([d for d in gen_decisions.values()]), 4)
+                    gen_process_time = round(end_time - start_time, 4)
+
+                    results["decisions"].append(gen_decisions)
+                    results["scores"].append(score)
+                    results["process_time"].append(gen_process_time)
+
+                    success = True
+                    print(results)
+
+                    return results
+
+                except Exception as e:
+                    attempt += 1
+                    print(f"ERROR {e} for generation {gen}. Attempt {attempt}/{max_retries}")
+                    
+                    if attempt < max_retries:
+                        await asyncio.sleep(3)
+                    else:
+                        results["decisions"].append(None)
+                        results["scores"].append(0)
+                        results["process_time"].append(0)
+                    pass
 
     async def is_supported(self, atoms_entities, k=2):
         """
@@ -166,9 +184,7 @@ if __name__ == "__main__":
 
     gen1 = "Jessie Mae Brown Beavers (born 1908, date of death unknown) was an African-American social worker, community leader, and activist who played a significant role in promoting civil rights and social justice in Los Angeles, California, during the mid-20th century. She earned her bachelor's degree in social work from the University of California, Los Angeles (UCLA) and later pursued her master's degree from the University of Southern California (USC)."
     gen2 = "Elvis Presley (1935–1977) was an American singer and actor, widely celebrated as the 'King of Rock and Roll'. He became one of the most influential figures in 20th-century popular culture through his music, charisma, and groundbreaking performance style. Born on January 8, 1935, in Tupelo, Mississippi, Elvis grew up in a modest household with a strong influence from gospel music. His family later moved to Memphis, Tennessee, where he was exposed to a blend of blues, country, and rhythm & blues — elements that would shape his unique musical style."
-    res = asyncio.run(fs.get_score(generations=[gen2], k=2))
+    res = asyncio.run(fs.get_score(generations=[gen1, gen2], k=2))
 
-    print(res)
-
-    print(res['scores'][0])
+    print(res['scores'])
     print(res['process_time'])
