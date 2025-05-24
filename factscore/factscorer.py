@@ -98,8 +98,7 @@ class FactScorer:
                         results["decisions"].append(None)
                         results["scores"].append(0)
                         results["process_time"].append(0)
-                    pass
-
+                
         return results
 
     async def is_supported(self, atoms_entities, k=2):
