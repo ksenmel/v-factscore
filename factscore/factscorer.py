@@ -56,35 +56,60 @@ class FactScorer:
         """
         results = {"decisions": [], "scores": [], "process_time": []}
 
+        max_retries = 3
+        retry_delay = 3
+
         for gen in generations:
-            start_time = time.time()
+            attempt = 0
+            success = False
 
-            facts = await self.af_generator.run(gen)
+            while attempt < max_retries and not success:
+                try:
+                    start_time = time.time()
 
-            gen_atoms = list(itertools.chain.from_iterable(facts.values()))
+                    facts = await self.af_generator.run(gen)
 
-            if gen_atoms:
-                atoms_entities = await self.entities_retriever.run(gen_atoms)
+                    gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
-                gen_decisions = await self.is_supported(atoms_entities, k=k)
+                    if gen_atoms:
+                        atoms_entities = await self.entities_retriever.run(gen_atoms)
 
-                end_time = time.time()
+                        gen_decisions = await self.is_supported(atoms_entities, k=k)
 
-                score = round(np.mean([d for d in gen_decisions.values()]), 4)
-                gen_process_time = round(end_time - start_time, 4)
+                        end_time = time.time()
 
-                results["decisions"].append(gen_decisions)
-                results["scores"].append(score)
-                results["process_time"].append(gen_process_time)
+                        score = round(np.mean([d for d in gen_decisions.values()]), 4)
+                        gen_process_time = round(end_time - start_time, 4)
 
-                print(gen_decisions)
-                print(score)
+                        results["decisions"].append(gen_decisions)
+                        results["scores"].append(score)
+                        results["process_time"].append(gen_process_time)
 
-            else:
+                    else:
+                        results["decisions"].append(None)
+                        results["scores"].append(0)
+                        results["process_time"].append(0)
+                    
+                    success = True
+                except Exception as e:
+                    attempt += 1
+
+                    error_msg = (
+                        f"ERROR {e} for generation {gen}"
+                        f"Attempt {attempt}/{max_retries}"
+                    )
+                    print(error_msg)
+
+                    if attempt < max_retries:
+                        await asyncio.sleep(retry_delay)
+
+            if not success:
+                print(f"Failed to process generation {gen} after {max_retries} attempts.")
+                
                 results["decisions"].append(None)
                 results["scores"].append(0)
                 results["process_time"].append(0)
-
+        
         return results
 
     async def is_supported(self, atoms_entities, k=2):
@@ -180,7 +205,6 @@ if __name__ == "__main__":
     gen5 = "Maxime Masson is a fairly common name, and there might be multiple individuals with that name. As an AI language model, I cannot provide a biography of a specific individual named Maxime Masson without more specific information.\n\nIf you're referring to a public figure or someone well-known, kindly provide more context or details related to their profession, accomplishments, or field of expertise to help me generate a relevant and accurate biography."
     gen6 = "I'm sorry, but I cannot find any information on a person named Serena Tideman. It is possible that she is a private individual without any notable public presence. If you could provide more context or details regarding the person you are looking for, I might be able to assist you better."
 
-    res = asyncio.run(fs.get_score(generations=[gen6], k=2))
+    res = asyncio.run(fs.get_score(generations=[gen2], k=2))
 
-    print(res["scores"])
-    print(res["process_time"])
+    print(res)
