@@ -28,7 +28,8 @@ class EmbedRetrieval:
         """
         assert isinstance(queries, list)
 
-        vecs, _ = await self.ef(queries)
+        vecs, failed, cost = await self.ef(queries)
+
         vecs = np.array(vecs)
         _, indices = self.index.search(vecs, k)
         k_titles = []

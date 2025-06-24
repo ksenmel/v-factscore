@@ -32,6 +32,7 @@ class APICompletions:
             proxy=os.environ["COMPLETIONS_PROXY"]
             if os.environ["COMPLETIONS_PROXY"] != "None"
             else None,
+            calculate_cost=True
         )
         if len(results) == 0:
             print("FAILED RESULTS")
@@ -66,6 +67,7 @@ class APIEmbeddingFunction:
             proxy=os.environ["EMBEDDINGS_PROXY"]
             if os.environ["EMBEDDINGS_PROXY"] != "None"
             else None,
+            calculate_cost=False
         )
 
         return embeds, failed, costs
@@ -92,9 +94,10 @@ async def fetch_with_retries(
     proxy: str,
     request_header,
     request_json,
+    calculate_cost: bool,
     max_retries=5,
     retry_delay=1.0,
-    retry_condition=None,
+    retry_condition=None
 ):
     for attempt in range(max_retries):
         try:
@@ -104,7 +107,9 @@ async def fetch_with_retries(
                 response.raise_for_status()
                 response = await response.json()
 
-                cost = get_cost_from_response(response)
+                cost = None
+                if calculate_cost:
+                    cost = get_cost_from_response(response)
 
                 if "chat" in request_url:
                     content = get_content_message_from_response(response)
@@ -131,6 +136,7 @@ async def process_api_requests_from_list(
     request_url: str,
     proxy: str,
     api_key: str,
+    calculate_cost: bool,
     max_attempts=4,
 ):
     """
@@ -160,6 +166,7 @@ async def process_api_requests_from_list(
                 request_json=request_json,
                 max_retries=max_attempts,
                 retry_delay=seconds_to_pause_after_error,
+                calculate_cost=calculate_cost
             )
             for request_json in requests
         ]

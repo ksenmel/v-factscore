@@ -46,13 +46,13 @@ class EntitiesRetriever:
             )
             prompts.append(prompt)
 
-        responses = await self.llm.generate(prompts)
+        responses, failed, costs = await self.llm.generate(prompts)
 
-        sent_to_entities = {}  # dict {sentence: entities from the sentence}
+        sent_to_entities = {} 
         if responses is not None:
             for i, output in enumerate(responses):
                 sent_to_entities[sentences[i]] = await self.text_to_entities(output)
-            return sent_to_entities
+            return sent_to_entities, costs
 
     async def text_to_entities(self, text):
         facts = text.split("- ")[1:]

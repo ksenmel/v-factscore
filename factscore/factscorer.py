@@ -53,7 +53,7 @@ class FactScorer:
         generations: the generations we try to score.
         k: how many articles we want to add to the RAG context.
         """
-        results = {"decisions": [], "scores": [], "process_time": []}
+        results = {"decisions": [], "scores": [], "process_time": [], "estimated_costs": []}
 
         max_retries = 3
         retry_delay = 3
@@ -66,36 +66,40 @@ class FactScorer:
                 try:
                     start_time = time.time()
 
-                    facts = await self.af_generator.run(gen)
-
+                    facts, facts_cost = await self.af_generator.run(gen)
+                    
                     gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
                     if gen_atoms:
-                        atoms_entities = await self.entities_retriever.run(gen_atoms)
+                        atoms_entities, ents_cost = await self.entities_retriever.run(gen_atoms)
 
-                        gen_decisions = await self.is_supported(atoms_entities, k=k)
+                        gen_decisions, decisions_cost = await self.is_supported(atoms_entities, k=k)
 
                         end_time = time.time()
 
                         score = round(np.mean([d for d in gen_decisions.values()]), 4)
                         gen_process_time = round(end_time - start_time, 4)
+                        cost = facts_cost + ents_cost + decisions_cost
 
                         results["decisions"].append(gen_decisions)
                         results["scores"].append(score)
                         results["process_time"].append(gen_process_time)
+                        results["estimated_costs"].append(cost)
 
                     else:
                         results["decisions"].append(None)
                         results["scores"].append(0)
                         results["process_time"].append(0)
-                    
+                        results["estimated_costs"].append(0.0)
+
                     success = True
+                    
                 except Exception as e:
                     attempt += 1
 
                     error_msg = (
-                        f"ERROR {e} for generation {gen}"
-                        f"Attempt {attempt}/{max_retries}"
+                        f"ERROR {e} for generation {gen}.\n"
+                        f"Attempt {attempt}/{max_retries}."
                     )
                     print(error_msg)
 
@@ -108,6 +112,7 @@ class FactScorer:
                 results["decisions"].append(None)
                 results["scores"].append(0)
                 results["process_time"].append(0)
+                results["estimated_costs"].append(0.0)
         
         return results
 
@@ -119,9 +124,8 @@ class FactScorer:
         prompts = await self.get_rag_prompts_and_passages(atoms_entities, k)
 
         atoms = [p[0] for p in prompts]
-        answers = await self.completions_lm.generate([p[1] for p in prompts])
 
-        print(answers)
+        answers, failed, cost = await self.completions_lm.generate([p[1] for p in prompts])
 
         for answer, atom in zip(answers, atoms):
             answer = answer.lower()
@@ -135,7 +139,7 @@ class FactScorer:
             else:
                 continue
 
-        return decisions
+        return decisions, cost
 
     async def get_rag_prompts_and_passages(
         self, atoms_entities, k: int
@@ -147,7 +151,7 @@ class FactScorer:
 
         ents = list(set(itertools.chain.from_iterable(atoms_entities.values())))
 
-        _, texts = await self.db.search_text_by_queries(queries=ents, k=k)
+        titles, texts = await self.db.search_text_by_queries(queries=ents, k=k)
 
         corpus = []
         for text in texts:
@@ -193,7 +197,7 @@ if __name__ == "__main__":
     Tomography is imaging by sections or sectioning that uses any kind of penetrating wave. The method is used in radiology, archaeology, biology, atmospheric science, geophysics, oceanography, plasma physics, materials science, cosmochemistry, astrophysics, quantum information, and other areas of science. 
     In many cases, the production of these images is based on the mathematical procedure tomographic reconstruction, such as X-ray computed tomography technically being produced from multiple projectional radiographs. Many different reconstruction algorithms exist. Most algorithms fall into one of two categories: filtered back projection (FBP) and iterative reconstruction (IR). These procedures give inexact results: they represent a compromise between accuracy and computation time required. FBP demands fewer computational resources, while IR generally produces fewer artifacts (errors in the reconstruction) at a higher computing cost.
     """
-
+    
     gen4 = "There are several individuals named Joseph A. Lopez, but without any specific context or background information, it is difficult to provide a biography. Please provide more details, such as occupation or field of expertise, to help me identify the correct Joseph A. Lopez you are referring to."
     gen5 = "Maxime Masson is a fairly common name, and there might be multiple individuals with that name. As an AI language model, I cannot provide a biography of a specific individual named Maxime Masson without more specific information.\n\nIf you're referring to a public figure or someone well-known, kindly provide more context or details related to their profession, accomplishments, or field of expertise to help me generate a relevant and accurate biography."
     gen6 = "I'm sorry, but I cannot find any information on a person named Serena Tideman. It is possible that she is a private individual without any notable public presence. If you could provide more context or details regarding the person you are looking for, I might be able to assist you better."

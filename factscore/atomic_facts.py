@@ -47,6 +47,7 @@ Output:
 - Erich Maria Remarque died in Locarno, Switzerland.
 - Erich Maria Remarque left behind a legacy as one of the most poignant chroniclers of war’s human cost. 
 - Erich Maria Remarque works remain essential readings in literature and pacifist thought.
+
 """
 
 class GenerationAtomicFactGenerator():
@@ -56,6 +57,7 @@ class GenerationAtomicFactGenerator():
         self.llm = llm
         self.segmenter = Segmenter(language="en")
     
+
     def run(self, generation):
         """
         Converts the generation into a set of atomic facts.
@@ -64,21 +66,23 @@ class GenerationAtomicFactGenerator():
 
         return self.get_atomic_facts_from_generation(generation)
     
+
     async def get_atomic_facts_from_generation(self, generation):
         prompt = (
             self.demos
             + f"""Now process the following passage:\nInput passage: "{generation}"\nOutput\n:"""
             )
 
-        response = await self.llm.generate([prompt])
+        response, failed, costs = await self.llm.generate([prompt])
 
         gen_to_facts = {}
 
         if response is not None:
             gen_to_facts[generation] = await self.text_to_facts(response[0])
 
-            return gen_to_facts
+            return gen_to_facts, costs
     
+
     async def text_to_facts(self, text):
         """
         Breaks LLM's output into facts removing all LLM extra notes
@@ -163,3 +167,4 @@ class AtomicFactGenerator():
             if facts[-1][-1] != ".":
                 facts[-1] = facts[-1] + "."
         return facts
+
