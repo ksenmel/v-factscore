@@ -7,7 +7,6 @@ from rank_bm25 import BM25Okapi
 from typing import List, Tuple
 
 from factscore.api_requests import APICompletions
-# from factscore.atomic_facts import AtomicFactGenerator
 from factscore.atomic_facts import GenerationAtomicFactGenerator
 from factscore.api_requests import APIEmbeddingFunction
 from factscore.database import DocDB
@@ -17,8 +16,8 @@ from factscore.entities_retriever import EntitiesRetriever
 class FactScorer:
     def __init__(
         self,
-        completions_base_url="https://openrouter.ai/api/v1/chat/completions",
-        completions_model_name="mistralai/ministral-8b",
+        completions_base_url="https://api.deepinfra.com/v1/openai/chat/completions",
+        completions_model_name="Qwen/Qwen3-32B",
         embedding_base_url="http://localhost:11434/api/embeddings",
         embedding_model_name="nomic-embed-text",
     ):
@@ -148,13 +147,8 @@ class FactScorer:
 
         ents = list(set(itertools.chain.from_iterable(atoms_entities.values())))
 
-        start_time = time.time()
         _, texts = await self.db.search_text_by_queries(queries=ents, k=k)
-        end_time = time.time()
 
-        print(f"Searched texts with FAISS in {end_time - start_time} seconds")
-
-        start_time = time.time()
         corpus = []
         for text in texts:
             sents = self.segmenter.segment(text[0])
@@ -181,10 +175,6 @@ class FactScorer:
 
             prompts.append((atom, rag_prompt))
 
-        end_time = time.time()
-
-        print(f"Did BM25 in {end_time - start_time} seconds")
-
         return prompts
 
 
@@ -198,13 +188,16 @@ if __name__ == "__main__":
     print("DB registered!")
 
     gen1 = "Albert Einstein (1879–1955) was a German-born theoretical physicist who revolutionized modern science with his groundbreaking theories, most notably the theory of relativity. Born on March 14, 1879, in Ulm, Germany, Einstein showed an early curiosity for mathematics and physics, though he struggled with the rigid structure of traditional schooling. In 1915, he expanded his work into General Relativity, redefining gravity as the curvature of spacetime by mass and energy. His predictions, such as light bending around the sun, were confirmed during the 1919 solar eclipse, making him a global celebrity."
-    gen2 = "Elvis Presley (1935–1977) was an American singer and actor, widely celebrated as the 'King of Rock and Roll'. He became one of the most influential figures in 20th-century popular culture through his music, charisma, and groundbreaking performance style. Born on January 8, 1935, in Tupelo, Mississippi, Elvis grew up in a modest household with a strong influence from gospel music. His family later moved to Memphis, Tennessee, where he was exposed to a blend of blues, country, and rhythm & blues — elements that would shape his unique musical style."
     gen3 = "Jessie Mae Brown Beavers (born 1908, date of death unknown) was an African-American social worker, community leader, and activist who played a significant role in promoting civil rights and social justice in Los Angeles, California, during the mid-20th century.\n\nBorn in Texas, Beavers moved to Los Angeles in the 1920s. She earned her bachelor's degree in social work from the University of California, Los Angeles (UCLA) and later pursued her master's degree from the University of Southern California (USC).\n\nJessie Mae Brown Beavers was a dedicated social worker who spent her career advocating for the well-being of the African-American community in Los Angeles. She held several positions in social work agencies, including the Los Angeles County Department of Charities, where she worked to improve the conditions of African-American wards in juvenile detention centers. She was also a member of the National Association of Social Workers (NASW).\n\nIn addition to her work as a social worker, Beavers was an active member of several civil rights organizations, such as the National Association for the Advancement of Colored People (NAACP) and the Urban League. She was instrumental in organizing and leading community-based programs aimed at improving education, employment, and housing opportunities for African-Americans.\n\nBeavers was also a prominent member of the Alpha Kappa Alpha (AKA) sorority, the first African-American Greek-lettered sorority, and held leadership positions within the organization. Her efforts in the AKA sorority helped to strengthen its commitment to social justice, community service, and the promotion of African-American culture.\n\nThroughout her life, Jessie Mae Brown Beavers remained a tireless advocate for racial equality and social justice. Although the exact date of her death is unknown, her legacy lives on through her many contributions to the improvement of the African-American community in Los Angeles and beyond."
+    gen2 = """
+    Tomography is imaging by sections or sectioning that uses any kind of penetrating wave. The method is used in radiology, archaeology, biology, atmospheric science, geophysics, oceanography, plasma physics, materials science, cosmochemistry, astrophysics, quantum information, and other areas of science. 
+    In many cases, the production of these images is based on the mathematical procedure tomographic reconstruction, such as X-ray computed tomography technically being produced from multiple projectional radiographs. Many different reconstruction algorithms exist. Most algorithms fall into one of two categories: filtered back projection (FBP) and iterative reconstruction (IR). These procedures give inexact results: they represent a compromise between accuracy and computation time required. FBP demands fewer computational resources, while IR generally produces fewer artifacts (errors in the reconstruction) at a higher computing cost.
+    """
 
     gen4 = "There are several individuals named Joseph A. Lopez, but without any specific context or background information, it is difficult to provide a biography. Please provide more details, such as occupation or field of expertise, to help me identify the correct Joseph A. Lopez you are referring to."
     gen5 = "Maxime Masson is a fairly common name, and there might be multiple individuals with that name. As an AI language model, I cannot provide a biography of a specific individual named Maxime Masson without more specific information.\n\nIf you're referring to a public figure or someone well-known, kindly provide more context or details related to their profession, accomplishments, or field of expertise to help me generate a relevant and accurate biography."
     gen6 = "I'm sorry, but I cannot find any information on a person named Serena Tideman. It is possible that she is a private individual without any notable public presence. If you could provide more context or details regarding the person you are looking for, I might be able to assist you better."
 
-    res = asyncio.run(fs.get_score(generations=[gen2], k=2))
+    res = asyncio.run(fs.get_score(generations=[gen6], k=2))
 
     print(res)
