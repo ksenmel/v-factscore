@@ -3,7 +3,7 @@ from pysbd import Segmenter
 
 from factscore.api_requests import APICompletions
 
-SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the sentence is inadequate or doesn't contain any information, answer "No facts to extract".
+SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the sentence is inadequate or doesn't contain any information, answer "No facts to extract". Follow the style of output in example.
 
 Example 1:
 Input Sentence: "Albert Einstein developed the theory of relativity, which revolutionized modern physics."
@@ -28,22 +28,25 @@ Output:
 - Bateman is currently in development on his feature debut.
 """
 
-GENERATION_INSTRUCT_PROMPT = """Task: Given the following passage, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the passage is inadequate or doesn't contain any information, answer "No facts to extract".
+GENERATION_INSTRUCT_PROMPT = """Task: Given the following passage, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the passage is inadequate or doesn't contain any information, answer "No facts to extract". Follow the style of output in example.
 Example:
-Input passage: "Albert Einstein (1879–1955) was a German-born theoretical physicist best known for developing the theory of relativity, one of the two pillars of modern physics. Einstein was born in Ulm, in the Kingdom of Württemberg in the German Empire. He studied physics and mathematics in Switzerland and later worked as a patent examiner while developing his groundbreaking theories. In 1905, he published four major papers, including the special theory of relativity, during what is now called his Annus Mirabilis (miracle year).
+Input passage: "Erich Maria Remarque (1898–1970) was a German novelist best known for his anti-war masterpiece 'All Quiet on the Western Front (1928)', which vividly depicted the horrors of World War I from the perspective of a young German soldier. Erich Maria Remarque was born on June 22, 1898, in Osnabrück, Germany. He later changed his middle name to 'Maria' in honor of his mother and adjusted the spelling of his last name to 'Remarque'. Remarque married actress Paulette Goddard in 1958, his second marriage after his first to dancer Jutta Zambona (twice, due to divorce and remarriage). He died on September 25, 1970, in Locarno, Switzerland, leaving behind a legacy as one of the most poignant chroniclers of war’s human cost. His works remain essential readings in literature and pacifist thought."
 Output:
-- Albert Einstein was born in 1879.
-- Albert Einstein died in 1955.
-- Albert Einstein was a German-born theoretical physicist.
-- Albert Einstein is best known for developing the theory of relativity.
-- The theory of relativity is one of the two pillars of modern physics.
-- Albert Einstein was born in Ulm.
-- Ulm was in the Kingdom of Württemberg.
-- The Kingdom of Württemberg was part of the German Empire.
-- Albert Einstein studied and mathematics in Switzerland.
-- Albert Einstein developed his groundbreaking theories while working as a patent examiner.
-- In 1905, Albert Einstein published four major papers including the special theory of relativity.
-- The year 1905 is called Albert Einstein’s Annus Mirabilis (miracle year).
+- Erich Maria Remarque was a German novelist.
+- Erich Maria Remarque was born in 1898.
+- Erich Maria Remarque was died in 1970.
+- Erich Maria Remarque is best known for his anti-war masterpiece 'All Quiet on the Western Front (1928)'.
+- 'All Quiet on the Western Front (1928)' depicted the horrors of World War I from the perspective of a young German soldier.
+- Erich Maria Remarque was born on June 22, 1898.
+- Erich Maria Remarque was born in Osnabrück, Germany.
+- Erich Maria Remarque changed his middle name to 'Maria' in honor of his mother.
+- Erich Maria Remarque adjusted the spelling of his last name to 'Remarque'. 
+- Erich Maria Remarque married actress Paulette Goddard in 1958. 
+- Erich Maria Remarque first marriage was to dancer Jutta Zambona.
+- Erich Maria Remarque died on September 25, 1970.
+- Erich Maria Remarque died in Locarno, Switzerland.
+- Erich Maria Remarque left behind a legacy as one of the most poignant chroniclers of war’s human cost. 
+- Erich Maria Remarque works remain essential readings in literature and pacifist thought.
 """
 
 class GenerationAtomicFactGenerator():

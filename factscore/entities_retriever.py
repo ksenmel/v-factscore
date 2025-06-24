@@ -8,7 +8,8 @@ Example 1:
 Input Sentence: "During World War II, Turing worked for the Government Code and Cypher School at Bletchley Park, Britain's codebreaking centre that produced Ultra intelligence."
 Output:
 - Turing
-- Government Code and Cypher School
+- Government Code 
+- Cypher School
 - Bletchley Park
 
 Example 2:
@@ -17,12 +18,6 @@ Output:
 - Michael Collins
 
 Example 3:
-Input Sentence: "Photosynthesis is essential for plant growth and development."
-Output:
-- Photosynthesis
-- Plant
-
-Example 4:
 Input Sentence: "Hermann Einstein and Pauline Koch were middle-class."
 Output:
 - Hermann Einstein

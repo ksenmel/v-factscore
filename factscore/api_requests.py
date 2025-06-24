@@ -15,8 +15,11 @@ class APICompletions:
         messages = list(
             map(
                 lambda x: {
-                    "messages": [{"role": "user", "content": x}],
                     "model": self.model_name,
+                    "messages": [{"role": "user", "content": x}],
+                    "stream": False,
+                    "temperature": 0.2,
+                    "reasoning_effort": "none"
                 },
                 messages,
             )
@@ -37,30 +40,18 @@ class APICompletions:
 
 
 class APIEmbeddingFunction:
-    def __init__(self, base_url, model_name, dimensions=384):
+    def __init__(self, base_url, model_name, dimensions=768):
         self.base_url = base_url
         self.model_name = model_name
         self.dimensions = dimensions
-
-    # async def __call__(self, inputs: list):
-    #     requests = list(
-    #         map(
-    #             lambda x: {
-    #                 "input": x,
-    #                 "model": self.model_name,
-    #                 "dimensions": self.dimensions,
-    #             },
-    #             inputs,
-    #         )
-    #     )
 
     async def __call__(self, inputs: list):
         requests = list(
             map(
                 lambda x: {
-                    "prompt": x,
+                    "prompt": x, # "prompt" for ollama, else "input"
                     "model": self.model_name,
-                    "dimensionality": self.dimensions,
+                    "dimensionality": self.dimensions, # "dimensionality" for ollama, else "dimensions"
                 },
                 inputs,
             )
@@ -79,15 +70,13 @@ class APIEmbeddingFunction:
 
 def get_embedding_from_response(response):
     try:
-        # return response["data"][0]["embedding"]
-        # TODO: add separate logic for localhost models
-        return response["embedding"]  # {'embedding': [...]}
+        return response["embedding"]
     except KeyError:
         return None
 
 
 def get_content_message_from_response(response):
-    return response["choices"][0]["message"]["content"]  # chat
+    return response["choices"][0]["message"]["content"]
 
 
 async def fetch_with_retries(
