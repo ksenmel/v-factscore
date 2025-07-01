@@ -113,6 +113,11 @@ class FactScorer:
                 results["scores"].append(0)
                 results["process_time"].append(0)
                 results["estimated_costs"].append(0.0)
+            
+            print(gen_decisions)
+            print(f"gen factscore: {score}")
+            print(f"gen pocess time: {gen_process_time}")
+            print(f"gen estimated cost: {cost}")
         
         return results
 
@@ -180,28 +185,3 @@ class FactScorer:
             prompts.append((atom, rag_prompt))
 
         return prompts
-
-
-if __name__ == "__main__":
-    fs = FactScorer()
-    fs.register_knowledge_source(
-        faiss_index="/Users/kseniia/factscore/indexes/all_vecs.index",
-        data_db="/Users/kseniia/enwiki-20230401.db",
-        table_name="documents",
-    )
-    print("DB registered!")
-
-    gen1 = "Albert Einstein (1879–1955) was a German-born theoretical physicist who revolutionized modern science with his groundbreaking theories, most notably the theory of relativity. Born on March 14, 1879, in Ulm, Germany, Einstein showed an early curiosity for mathematics and physics, though he struggled with the rigid structure of traditional schooling. In 1915, he expanded his work into General Relativity, redefining gravity as the curvature of spacetime by mass and energy. His predictions, such as light bending around the sun, were confirmed during the 1919 solar eclipse, making him a global celebrity."
-    gen3 = "Jessie Mae Brown Beavers (born 1908, date of death unknown) was an African-American social worker, community leader, and activist who played a significant role in promoting civil rights and social justice in Los Angeles, California, during the mid-20th century.\n\nBorn in Texas, Beavers moved to Los Angeles in the 1920s. She earned her bachelor's degree in social work from the University of California, Los Angeles (UCLA) and later pursued her master's degree from the University of Southern California (USC).\n\nJessie Mae Brown Beavers was a dedicated social worker who spent her career advocating for the well-being of the African-American community in Los Angeles. She held several positions in social work agencies, including the Los Angeles County Department of Charities, where she worked to improve the conditions of African-American wards in juvenile detention centers. She was also a member of the National Association of Social Workers (NASW).\n\nIn addition to her work as a social worker, Beavers was an active member of several civil rights organizations, such as the National Association for the Advancement of Colored People (NAACP) and the Urban League. She was instrumental in organizing and leading community-based programs aimed at improving education, employment, and housing opportunities for African-Americans.\n\nBeavers was also a prominent member of the Alpha Kappa Alpha (AKA) sorority, the first African-American Greek-lettered sorority, and held leadership positions within the organization. Her efforts in the AKA sorority helped to strengthen its commitment to social justice, community service, and the promotion of African-American culture.\n\nThroughout her life, Jessie Mae Brown Beavers remained a tireless advocate for racial equality and social justice. Although the exact date of her death is unknown, her legacy lives on through her many contributions to the improvement of the African-American community in Los Angeles and beyond."
-    gen2 = """
-    Tomography is imaging by sections or sectioning that uses any kind of penetrating wave. The method is used in radiology, archaeology, biology, atmospheric science, geophysics, oceanography, plasma physics, materials science, cosmochemistry, astrophysics, quantum information, and other areas of science. 
-    In many cases, the production of these images is based on the mathematical procedure tomographic reconstruction, such as X-ray computed tomography technically being produced from multiple projectional radiographs. Many different reconstruction algorithms exist. Most algorithms fall into one of two categories: filtered back projection (FBP) and iterative reconstruction (IR). These procedures give inexact results: they represent a compromise between accuracy and computation time required. FBP demands fewer computational resources, while IR generally produces fewer artifacts (errors in the reconstruction) at a higher computing cost.
-    """
-    
-    gen4 = "There are several individuals named Joseph A. Lopez, but without any specific context or background information, it is difficult to provide a biography. Please provide more details, such as occupation or field of expertise, to help me identify the correct Joseph A. Lopez you are referring to."
-    gen5 = "Maxime Masson is a fairly common name, and there might be multiple individuals with that name. As an AI language model, I cannot provide a biography of a specific individual named Maxime Masson without more specific information.\n\nIf you're referring to a public figure or someone well-known, kindly provide more context or details related to their profession, accomplishments, or field of expertise to help me generate a relevant and accurate biography."
-    gen6 = "I'm sorry, but I cannot find any information on a person named Serena Tideman. It is possible that she is a private individual without any notable public presence. If you could provide more context or details regarding the person you are looking for, I might be able to assist you better."
-
-    res = asyncio.run(fs.get_score(generations=[gen6], k=2))
-
-    print(res)
