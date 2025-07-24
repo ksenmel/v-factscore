@@ -14,13 +14,38 @@ from factscore.entities_retriever import EntitiesRetriever
 
 
 class FactScorer:
+    """
+    A class for calculating FactScore metrics for text generations by:
+    1. Extracting atomic facts from generations
+    2. Retrieving supporting entities
+    3. Verifying facts with a knowledge source
+    4. Calculating the final FactScore
+
+    Attributes:
+        completions_lm (APICompletions): Language model for atomic fact generation
+        embeddings_lm (APIEmbeddingFunction): Embedding model for retrieval
+        af_generator (GenerationAtomicFactGenerator): Atomic Fact generator (extract from text)
+        entities_retriever (EntitiesRetriever): Entity retriever
+        segmenter: Text segmenter from af_generator
+        db (DocDB): Knowledge source database
+    """
+
     def __init__(
         self,
-        completions_base_url="https://api.deepinfra.com/v1/openai/chat/completions",
-        completions_model_name="Qwen/Qwen3-32B",
-        embedding_base_url="http://localhost:11434/api/embeddings",
-        embedding_model_name="nomic-embed-text",
+        completions_base_url: str = "https://api.deepinfra.com/v1/openai/chat/completions",
+        completions_model_name: str = "Qwen/Qwen3-32B",
+        embedding_base_url: str = "http://localhost:11434/api/embeddings",
+        embedding_model_name: str = "nomic-embed-text",
     ):
+        """
+        Initialize the FactScorer with language models and components.
+
+        Args:
+            completions_base_url: Base URL for completions API
+            completions_model_name: Model name for completions
+            embedding_base_url: Base URL for embeddings API
+            embedding_model_name: Model name for embeddings
+        """
         self.completions_lm = APICompletions(
             base_url=completions_base_url, model_name=completions_model_name
         )
@@ -34,10 +59,18 @@ class FactScorer:
 
     def register_knowledge_source(
         self,
-        faiss_index,
-        data_db,
-        table_name,
+        faiss_index: str,
+        data_db: str,
+        table_name: str,
     ):
+        """
+        Register the knowledge source for fact verification.
+
+        Args:
+            faiss_index: Path to FAISS index file
+            data_db: Path to SQLite database
+            table_name: Table name containing all the info for fact verification
+        """
         self.db = DocDB(
             db_path=data_db,
             faiss_index=faiss_index,
@@ -47,13 +80,25 @@ class FactScorer:
 
     async def get_score(self, generations: list, k=2):
         """
-        Computes factscore for each generation
+        Computes factscore for each generation.
 
-        topics: topics of the generations.
-        generations: the generations we try to score.
-        k: how many articles we want to add to the RAG context.
+        Args:
+            generations: List of text generations to score
+            k: Number of articles to retrieve for RAG context
+
+        Returns:
+            Dictionary:
+            - decisions: Verification results (True or False) per atomic fact
+            - scores: FactScore per generation
+            - process_time: Processing time per generation
+            - estimated_costs: Estimated costs per generation
         """
-        results = {"decisions": [], "scores": [], "process_time": [], "estimated_costs": []}
+        results = {
+            "decisions": [],
+            "scores": [],
+            "process_time": [],
+            "estimated_costs": [],
+        }
 
         max_retries = 3
         retry_delay = 3
@@ -67,13 +112,17 @@ class FactScorer:
                     start_time = time.time()
 
                     facts, facts_cost = await self.af_generator.run(gen)
-                    
+
                     gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
                     if gen_atoms:
-                        atoms_entities, ents_cost = await self.entities_retriever.run(gen_atoms)
+                        atoms_entities, ents_cost = await self.entities_retriever.run(
+                            gen_atoms
+                        )
 
-                        gen_decisions, decisions_cost = await self.is_supported(atoms_entities, k=k)
+                        gen_decisions, decisions_cost = await self.is_supported(
+                            atoms_entities, k=k
+                        )
 
                         end_time = time.time()
 
@@ -93,32 +142,28 @@ class FactScorer:
                         results["estimated_costs"].append(0.0)
 
                     success = True
-                    
+
                 except Exception as e:
                     attempt += 1
-
-                    error_msg = (
-                        f"ERROR {e} for generation {gen}.\n"
-                        f"Attempt {attempt}/{max_retries}."
-                    )
-                    print(error_msg)
 
                     if attempt < max_retries:
                         await asyncio.sleep(retry_delay)
 
             if not success:
-                print(f"Failed to process generation {gen} after {max_retries} attempts.")
-                
+                print(
+                    f"Failed to process generation {gen} after {max_retries} attempts."
+                )
+
                 results["decisions"].append(None)
                 results["scores"].append(0)
                 results["process_time"].append(0)
                 results["estimated_costs"].append(0.0)
-            
+
             print(gen_decisions)
             print(f"gen factscore: {score}")
             print(f"gen pocess time: {gen_process_time}")
             print(f"gen estimated cost: {cost}")
-        
+
         return results
 
     async def is_supported(self, atoms_entities, k=2):
@@ -130,7 +175,9 @@ class FactScorer:
 
         atoms = [p[0] for p in prompts]
 
-        answers, failed, cost = await self.completions_lm.generate([p[1] for p in prompts])
+        answers, failed, cost = await self.completions_lm.generate(
+            [p[1] for p in prompts]
+        )
 
         for answer, atom in zip(answers, atoms):
             answer = answer.lower()
@@ -169,7 +216,7 @@ class FactScorer:
 
         for atom in atoms_entities.keys():
             atom_passages = bm25.get_top_n(atom.split(" "), corpus, 5)
-            
+
             rag_prompt = f"Task: Answer the question based on the given context.\n\n"
 
             for psg in atom_passages:

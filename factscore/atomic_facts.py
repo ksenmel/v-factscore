@@ -50,13 +50,34 @@ Output:
 
 """
 
-class GenerationAtomicFactGenerator():
+
+class GenerationAtomicFactGenerator:
+    """
+    Converts text generations into atomic facts using a language model.
+
+    This class:
+    - Uses instructional prompts to guide fact extraction
+    - Leverages a language model to decompose text into atomic facts
+    - Cleans and formats the extracted facts
+    - Provides text segmentation capabilities
+
+    Attributes:
+        demos (str): Instructional prompt template for fact extraction
+        llm (APICompletions): Language model client for fact extraction
+        segmenter (Segmenter): Text segmentation component
+    """
+
     demos = GENERATION_INSTRUCT_PROMPT
 
     def __init__(self, llm: APICompletions):
+        """
+        Initialize the fact generator with a language model.
+
+        Args:
+            llm: Language model client for generating completions
+        """
         self.llm = llm
         self.segmenter = Segmenter(language="en")
-    
 
     def run(self, generation):
         """
@@ -65,13 +86,12 @@ class GenerationAtomicFactGenerator():
         assert isinstance(generation, str), "generation must be a string"
 
         return self.get_atomic_facts_from_generation(generation)
-    
 
     async def get_atomic_facts_from_generation(self, generation):
         prompt = (
             self.demos
             + f"""Now process the following passage:\nInput passage: "{generation}"\nOutput\n:"""
-            )
+        )
 
         response, failed, costs = await self.llm.generate([prompt])
 
@@ -81,7 +101,6 @@ class GenerationAtomicFactGenerator():
             gen_to_facts[generation] = await self.text_to_facts(response[0])
 
             return gen_to_facts, costs
-    
 
     async def text_to_facts(self, text):
         """
@@ -101,8 +120,7 @@ class GenerationAtomicFactGenerator():
         return facts
 
 
-
-class AtomicFactGenerator():
+class AtomicFactGenerator:
     demos = SENTENCE_INSTRUCT_PROMPT
 
     def __init__(self, llm: APICompletions):
@@ -167,4 +185,3 @@ class AtomicFactGenerator():
             if facts[-1][-1] != ".":
                 facts[-1] = facts[-1] + "."
         return facts
-

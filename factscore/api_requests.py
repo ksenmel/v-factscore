@@ -12,7 +12,7 @@ class APICompletions:
         assert isinstance(messages, list), "prompts to the model must be list"
         if len(messages) == 0:
             return [], [], 0.0
-        
+
         messages = list(
             map(
                 lambda x: {
@@ -20,7 +20,7 @@ class APICompletions:
                     "messages": [{"role": "user", "content": x}],
                     "stream": False,
                     "temperature": 0.2,
-                    "reasoning_effort": "none"
+                    "reasoning_effort": "none",
                 },
                 messages,
             )
@@ -32,7 +32,7 @@ class APICompletions:
             proxy=os.environ["COMPLETIONS_PROXY"]
             if os.environ["COMPLETIONS_PROXY"] != "None"
             else None,
-            calculate_cost=True
+            calculate_cost=True,
         )
         if len(results) == 0:
             print("FAILED RESULTS")
@@ -52,9 +52,9 @@ class APIEmbeddingFunction:
         requests = list(
             map(
                 lambda x: {
-                    "prompt": x, # "prompt" for ollama, else "input"
+                    "prompt": x,  # "prompt" for ollama, else "input"
                     "model": self.model_name,
-                    "dimensionality": self.dimensions, # "dimensionality" for ollama, else "dimensions"
+                    "dimensionality": self.dimensions,  # "dimensionality" for ollama, else "dimensions"
                 },
                 inputs,
             )
@@ -67,7 +67,7 @@ class APIEmbeddingFunction:
             proxy=os.environ["EMBEDDINGS_PROXY"]
             if os.environ["EMBEDDINGS_PROXY"] != "None"
             else None,
-            calculate_cost=False
+            calculate_cost=False,
         )
 
         return embeds, failed, costs
@@ -97,7 +97,7 @@ async def fetch_with_retries(
     calculate_cost: bool,
     max_retries=5,
     retry_delay=1.0,
-    retry_condition=None
+    retry_condition=None,
 ):
     for attempt in range(max_retries):
         try:
@@ -166,13 +166,13 @@ async def process_api_requests_from_list(
                 request_json=request_json,
                 max_retries=max_attempts,
                 retry_delay=seconds_to_pause_after_error,
-                calculate_cost=calculate_cost
+                calculate_cost=calculate_cost,
             )
             for request_json in requests
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         for result in results:
             if isinstance(result, Exception):
                 failed_results.append(result)

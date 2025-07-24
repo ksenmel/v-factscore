@@ -6,6 +6,21 @@ from factscore.api_requests import APIEmbeddingFunction
 
 
 class EmbedRetrieval:
+    """
+    A class for performing embedding-based retrieval using FAISS index and SQL database.
+
+    This class enables efficient similarity search by:
+    1. Converting text queries to embeddings
+    2. Searching a FAISS index for nearest neighbors
+    3. Retrieving corresponding documents from a SQL database
+
+    Attributes:
+        ef (APIEmbeddingFunction): Embedding function for query encoding
+        index (faiss.Index): FAISS index for similarity search
+        connection (sqlite3.Connection): Database connection for document retrieval
+        titles (List[str]): List of document titles corresponding to FAISS index
+    """
+
     def __init__(
         self, index, titles: list[str], ef: APIEmbeddingFunction, connection: Connection
     ):

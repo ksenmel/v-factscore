@@ -27,6 +27,21 @@ Output:
 
 
 class EntitiesRetriever:
+    """
+    A class for extracting entities from text using a language model.
+    
+    This class:
+    - Formats input sentences with instructional prompts
+    - Queries a language model to identify entities
+    - Parses and cleans the model responses
+    - Returns extracted entities mapped to original sentences
+    
+    Attributes:
+        demos (str): Instructional prompt template for entity extraction
+        llm (APICompletions): Language model client for entity extraction
+    """
+
+    # Instructional prompt template for entity extraction
     demos = INSTRUCT_PROMPT
 
     def __init__(self, llm: APICompletions):
@@ -48,7 +63,7 @@ class EntitiesRetriever:
 
         responses, failed, costs = await self.llm.generate(prompts)
 
-        sent_to_entities = {} 
+        sent_to_entities = {}
         if responses is not None:
             for i, output in enumerate(responses):
                 sent_to_entities[sentences[i]] = await self.text_to_entities(output)
