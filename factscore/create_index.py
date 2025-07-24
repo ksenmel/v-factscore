@@ -1,6 +1,5 @@
 import faiss
 import numpy as np
-import os
 import sqlite3
 
 from faiss.contrib.ondisk import merge_ondisk

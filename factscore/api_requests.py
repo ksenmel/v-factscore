@@ -11,83 +11,81 @@ class APICompletions:
     async def generate(self, messages: list):
         assert isinstance(messages, list), "prompts to the model must be list"
         if len(messages) == 0:
-            return []
+            return [], [], 0.0
+
         messages = list(
             map(
                 lambda x: {
-                    "messages": [{"role": "user", "content": x}],
                     "model": self.model_name,
+                    "messages": [{"role": "user", "content": x}],
+                    "stream": False,
+                    "temperature": 0.2,
+                    "reasoning_effort": "none",
                 },
                 messages,
             )
         )
-        results, failed_results = await process_api_requests_from_list(
+        results, failed, costs = await process_api_requests_from_list(
             requests=messages,
             request_url=self.base_url,
             api_key=os.environ["COMPLETIONS_API_KEY"],
             proxy=os.environ["COMPLETIONS_PROXY"]
             if os.environ["COMPLETIONS_PROXY"] != "None"
             else None,
+            calculate_cost=True,
         )
         if len(results) == 0:
             print("FAILED RESULTS")
-            # print(failed_results)
-            # TODO
-        return results
+
+        total_cost = sum(costs)
+
+        return results, failed, total_cost
 
 
 class APIEmbeddingFunction:
-    def __init__(self, base_url, model_name, dimensions=384):
+    def __init__(self, base_url, model_name, dimensions=768):
         self.base_url = base_url
         self.model_name = model_name
         self.dimensions = dimensions
-
-    # async def __call__(self, inputs: list):
-    #     requests = list(
-    #         map(
-    #             lambda x: {
-    #                 "input": x,
-    #                 "model": self.model_name,
-    #                 "dimensions": self.dimensions,
-    #             },
-    #             inputs,
-    #         )
-    #     )
 
     async def __call__(self, inputs: list):
         requests = list(
             map(
                 lambda x: {
-                    "prompt": x,
+                    "prompt": x,  # "prompt" for ollama, else "input"
                     "model": self.model_name,
-                    "dimensionality": self.dimensions,
+                    "dimensionality": self.dimensions,  # "dimensionality" for ollama, else "dimensions"
                 },
                 inputs,
             )
         )
 
-        embeds, failed_results = await process_api_requests_from_list(
+        embeds, failed, costs = await process_api_requests_from_list(
             requests,
             self.base_url,
             api_key=os.environ["EMBEDDINGS_API_KEY"],
             proxy=os.environ["EMBEDDINGS_PROXY"]
             if os.environ["EMBEDDINGS_PROXY"] != "None"
             else None,
+            calculate_cost=False,
         )
-        return embeds, failed_results
+
+        return embeds, failed, costs
 
 
 def get_embedding_from_response(response):
     try:
-        # return response["data"][0]["embedding"]
-        # TODO: add separate logic for localhost models
-        return response["embedding"]  # {'embedding': [...]}
+        return response["embedding"]
     except KeyError:
         return None
 
 
 def get_content_message_from_response(response):
-    return response["choices"][0]["message"]["content"]  # chat
+    return response["choices"][0]["message"]["content"]
+
+
+def get_cost_from_response(response):
+    return response["usage"]["estimated_cost"]
 
 
 async def fetch_with_retries(
@@ -96,6 +94,7 @@ async def fetch_with_retries(
     proxy: str,
     request_header,
     request_json,
+    calculate_cost: bool,
     max_retries=5,
     retry_delay=1.0,
     retry_condition=None,
@@ -107,14 +106,21 @@ async def fetch_with_retries(
             ) as response:
                 response.raise_for_status()
                 response = await response.json()
+
+                cost = None
+                if calculate_cost:
+                    cost = get_cost_from_response(response)
+
                 if "chat" in request_url:
-                    return get_content_message_from_response(response)
+                    content = get_content_message_from_response(response)
+                    return {"content": content, "cost": cost}
                 elif "embeddings" in request_url:
-                    return get_embedding_from_response(response)
+                    embedding = get_embedding_from_response(response)
+                    return {"embedding": embedding, "cost": cost}
                 return
 
         except Exception as e:
-            print("failed with exception", e)
+            print("Failed with exception", e)
             print(request_json)
             if retry_condition and not retry_condition(e):
                 raise
@@ -122,7 +128,7 @@ async def fetch_with_retries(
                 await asyncio.sleep(retry_delay)
             else:
                 raise
-    return None
+    return {"content": None, "cost": 0.0}
 
 
 async def process_api_requests_from_list(
@@ -130,6 +136,7 @@ async def process_api_requests_from_list(
     request_url: str,
     proxy: str,
     api_key: str,
+    calculate_cost: bool,
     max_attempts=4,
 ):
     """
@@ -146,7 +153,9 @@ async def process_api_requests_from_list(
             "Authorization": f"Bearer {api_key}",
             "Proxy-Authorization": proxy,
         }
-    responses_list, failed_results = [], []
+
+    responses_list, failed_results, costs = [], [], []
+
     async with aiohttp.ClientSession() as session:
         tasks = [
             fetch_with_retries(
@@ -157,13 +166,23 @@ async def process_api_requests_from_list(
                 request_json=request_json,
                 max_retries=max_attempts,
                 retry_delay=seconds_to_pause_after_error,
+                calculate_cost=calculate_cost,
             )
             for request_json in requests
         ]
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
+
         for result in results:
             if isinstance(result, Exception):
                 failed_results.append(result)
+                costs.append(0.0)
             else:
-                responses_list.append(result)
-    return responses_list, failed_results
+                if "content" in result:
+                    responses_list.append(result["content"])
+                    costs.append(result["cost"])
+                elif "embedding" in result:
+                    responses_list.append(result["embedding"])
+                    costs.append(result["cost"])
+
+    return responses_list, failed_results, costs

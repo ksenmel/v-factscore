@@ -5,7 +5,20 @@ from factscore.emb_retrieval import EmbedRetrieval
 
 
 class DocDB:
-    """Sqlite document storage. By default, uses Wikipedia dump from 2023/04/01"""
+    """
+    A document database system that combines SQLite storage with FAISS-based embedding retrieval.
+
+    This class provides:
+    - Connection to a SQLite document database
+    - Integration with FAISS for efficient similarity search
+    - Text retrieval by semantic similarity
+
+    Attributes:
+        connection (sqlite3.Connection): Database connection
+        ef (APIEmbeddingFunction): Embedding function for query encoding
+        titles (List[str]): Document titles in the database
+        retriever (EmbedRetrieval): Embedding-based retrieval system
+    """
 
     def __init__(
         self, db_path: str, faiss_index: str, ef: APIEmbeddingFunction, table: str
