@@ -1,14 +1,14 @@
 # factscore
-Evaluates LLM outputs by decomposing responses into verifiable atomic facts and quantifying the evidence-supported percentage against provided database.
+Evaluates LLM outputs by decomposing the responses into a set of atomic facts and quantifying the percentage of supported facts over the provided database.
 
 
 
-Improving upon original [FActScore](https://github.com/shmsw25/FActScore), this enhanced evaluation pipeline quantifies LLM truthfulness by:
+Compared to the original [FActScore](https://github.com/shmsw25/FActScore), this enhanced evaluation pipeline quantifies LLM truthfulness by:
 1. Extracting atomic facts from generations;
 2. Retrieving supporting entities (NER);
 3. Verifying facts with a provided knowledge source;
 
-This enhanced version delivers significant improvements: 
+This version also provides significant improvements:
 1. Boosted performance through asynchronous API queries; 
 2. Boosted accuracy via Named Entity Recognition (NER) integration; 
 3. More reliable document retrieval using a sharded FAISS vector index that matches titles by semantic similarity rather than character-level comparison; 
@@ -19,9 +19,9 @@ This enhanced version delivers significant improvements:
 A reference database in the specified format Ensure the table has two columns: title, text.
 You can use pre-built .db Wikipedia 2023/04/01 dump, download it directly from [here](https://drive.google.com/file/d/1mekls6OGOKLmt7gYtHs0WGf5oTamTNat/view?usp=sharing).
 2. **Embeddings**. Vector representations of knowledge source titles (article titles). Pre-computed embeddings from the Wikipedia 2023/04/01 dump, generated using the `sentence-transformers/all-mpnet-base-v2` model, are available [here](https://drive.google.com/file/d/15NioK8CzUYMeFpe9kynSxl5UT7OPcZvh/view?usp=sharing).
-3. **Trained FAISS Index**. A trained FAISS IVF Index using the embeddings above. This must be trained on the same embeddings to ensure compatibility and optimal retrieval performance.
+3. **Trained FAISS Index**. A trained **FAISS IVF Index** using the embeddings above. This must be trained on the same embeddings to ensure compatibility and optimal retrieval performance. If the trained index is too large (>5GB), it may not fit in RAM. See [factscore/create_index.py](https://github.com/ksenmel/factscore/blob/main/factscore/create_index.py) about handling this
 4. **API Configuration**. As this implementation uses model APIs, you must set base URLs and API keys in their corresponding environment variables before execution.
-```python
+```bash
 export EMBEDDINGS_API_KEY="key-for-embeddings"
 export COMPLETIONS_API_KEY="key-for-completions"
 
@@ -53,4 +53,4 @@ fs.register_knowledge_source(faiss_index="path/to/index",
 res = fs.get_score(generations=[generation1, generation2], k=1)
 ```
 
-See see [factscore/demo.ipynb](https://github.com/ksenmel/factscore/blob/main/demo.ipynb) for more details.
+See see [demo.ipynb](https://github.com/ksenmel/factscore/blob/main/demo.ipynb) for more details.
