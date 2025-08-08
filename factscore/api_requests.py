@@ -29,9 +29,11 @@ class APICompletions:
             requests=messages,
             request_url=self.base_url,
             api_key=os.environ["COMPLETIONS_API_KEY"],
-            proxy=os.environ["COMPLETIONS_PROXY"]
-            if os.environ["COMPLETIONS_PROXY"] != "None"
-            else None,
+            proxy=(
+                os.environ["COMPLETIONS_PROXY"]
+                if os.environ["COMPLETIONS_PROXY"] != "None"
+                else None
+            ),
             calculate_cost=True,
         )
         if len(results) == 0:
@@ -64,9 +66,11 @@ class APIEmbeddingFunction:
             requests,
             self.base_url,
             api_key=os.environ["EMBEDDINGS_API_KEY"],
-            proxy=os.environ["EMBEDDINGS_PROXY"]
-            if os.environ["EMBEDDINGS_PROXY"] != "None"
-            else None,
+            proxy=(
+                os.environ["EMBEDDINGS_PROXY"]
+                if os.environ["EMBEDDINGS_PROXY"] != "None"
+                else None
+            ),
             calculate_cost=False,
         )
 

@@ -108,9 +108,11 @@ class GenerationAtomicFactGenerator:
         """
         facts = text.split("- ")[1:]
         facts = [
-            fact.strip()[:-1]
-            if len(fact) > 0 and fact.strip()[-1] == "\n"
-            else fact.strip()
+            (
+                fact.strip()[:-1]
+                if len(fact) > 0 and fact.strip()[-1] == "\n"
+                else fact.strip()
+            )
             for fact in facts
         ]
         facts = [re.sub(r"\n\n.*", "", fact, flags=re.DOTALL).strip() for fact in facts]
@@ -175,9 +177,11 @@ class AtomicFactGenerator:
         """
         facts = text.split("- ")[1:]
         facts = [
-            fact.strip()[:-1]
-            if len(fact) > 0 and fact.strip()[-1] == "\n"
-            else fact.strip()
+            (
+                fact.strip()[:-1]
+                if len(fact) > 0 and fact.strip()[-1] == "\n"
+                else fact.strip()
+            )
             for fact in facts
         ]
         facts = [re.sub(r"\n\n.*", "", fact, flags=re.DOTALL).strip() for fact in facts]
