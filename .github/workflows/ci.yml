@@ -1,4 +1,4 @@
-name: Python Package using Conda
+name: Lint&Tests
 
 on: [push]
 
@@ -15,6 +15,16 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.11'
+    
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: |
+        conda install pip -y
+        conda install --yes --file requirements.txt
         
     - name: Lint with black
       run: |
