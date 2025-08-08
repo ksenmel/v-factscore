@@ -1,4 +1,4 @@
-name: Python Package using Conda
+name: Lint&Tests
 
 on: [push]
 
@@ -18,7 +18,7 @@ jobs:
         
     - name: Lint with black
       run: |
-        pip install black -y
+        pip install black 
         black --check .
         
     - name: Test with pytest
