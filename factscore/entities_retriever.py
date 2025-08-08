@@ -29,13 +29,13 @@ Output:
 class EntitiesRetriever:
     """
     A class for extracting entities from text using a language model.
-    
+
     This class:
     - Formats input sentences with instructional prompts
     - Queries a language model to identify entities
     - Parses and cleans the model responses
     - Returns extracted entities mapped to original sentences
-    
+
     Attributes:
         demos (str): Instructional prompt template for entity extraction
         llm (APICompletions): Language model client for entity extraction
