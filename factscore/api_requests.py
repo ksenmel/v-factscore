@@ -18,9 +18,9 @@ class APICompletions:
                 lambda x: {
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": x}],
-                    "stream": False,
-                    "temperature": 0.2,
-                    "reasoning_effort": "none",
+                    # "stream": False,
+                    # "temperature": 0.2,
+                    # "reasoning_effort": "none",
                 },
                 messages,
             )
@@ -37,9 +37,9 @@ class APICompletions:
             calculate_cost=True,
         )
         if len(results) == 0:
-            print("FAILED RESULTS")
+            print("FAILED API RESULTS")
 
-        total_cost = sum(costs)
+        total_cost = sum(cost for cost in costs if cost is not None)
 
         return results, failed, total_cost
 
@@ -89,7 +89,11 @@ def get_content_message_from_response(response):
 
 
 def get_cost_from_response(response):
-    return response["usage"]["estimated_cost"]
+    usage = response.get("usage", {})
+    if "estimated_cost" in usage:
+        return usage["estimated_cost"]
+    
+    return None
 
 
 async def fetch_with_retries(
