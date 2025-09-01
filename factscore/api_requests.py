@@ -4,9 +4,10 @@ import os
 
 
 class APICompletions:
-    def __init__(self, base_url, model_name):
+    def __init__(self, base_url, model_name, temperature):
         self.base_url = base_url
         self.model_name = model_name
+        self.temperature = temperature
 
     async def generate(self, messages: list):
         assert isinstance(messages, list), "prompts to the model must be list"
@@ -19,7 +20,7 @@ class APICompletions:
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": x}],
                     # "stream": False,
-                    # "temperature": 0.2,
+                    "temperature": self.temperature,
                     # "reasoning_effort": "none",
                 },
                 messages,

@@ -32,8 +32,8 @@ class FactScorer:
 
     def __init__(
         self,
-        completions_base_url: str = "https://api.deepinfra.com/v1/openai/chat/completions",
-        completions_model_name: str = "Qwen/Qwen3-32B",
+        completions_base_url: str = "https://openrouter.ai/api/v1/chat/completions",
+        completions_model_name: str = "meta-llama/llama-3-8b-instruct",
         embedding_base_url: str = "http://localhost:11434/api/embeddings",
         embedding_model_name: str = "nomic-embed-text",
     ):
@@ -47,14 +47,14 @@ class FactScorer:
             embedding_model_name: Model name for embeddings
         """
         self.completions_lm = APICompletions(
-            base_url=completions_base_url, model_name=completions_model_name
+            base_url=completions_base_url, model_name=completions_model_name, temperature=0.0
         )
         self.embeddings_lm = APIEmbeddingFunction(
             base_url=embedding_base_url, model_name=embedding_model_name
         )
         self.af_generator = GenerationAtomicFactGenerator(llm=self.completions_lm)
-        self.entities_retriever = EntitiesRetriever(llm=self.completions_lm)
 
+        self.ents_retriever = EntitiesRetriever()
         self.segmenter = self.af_generator.segmenter
 
     def register_knowledge_source(
@@ -116,24 +116,25 @@ class FactScorer:
                     gen_atoms = list(itertools.chain.from_iterable(facts.values()))
 
                     if gen_atoms:
-                        atoms_entities, ents_cost = await self.entities_retriever.run(
-                            gen_atoms
-                        )
+                        atoms_ents = self.ents_retriever.run(gen_atoms)
 
-                        gen_decisions, decisions_cost = await self.is_supported(
-                            atoms_entities, k=k
-                        )
+                        gen_decisions, decisions_cost = await self.is_supported(atoms_ents, k=k)
 
                         end_time = time.time()
 
                         score = round(np.mean([d for d in gen_decisions.values()]), 4)
                         gen_process_time = round(end_time - start_time, 4)
-                        cost = facts_cost + ents_cost + decisions_cost
+                        cost = facts_cost + decisions_cost
 
                         results["decisions"].append(gen_decisions)
                         results["scores"].append(score)
                         results["process_time"].append(gen_process_time)
                         results["estimated_costs"].append(cost)
+
+                        print(gen_decisions)
+                        print(f"gen factscore: {score}")
+                        print(f"gen pocess time: {gen_process_time}")
+                        print(f"gen estimated cost: {cost}")
 
                     else:
                         results["decisions"].append(None)
@@ -145,6 +146,7 @@ class FactScorer:
 
                 except Exception as e:
                     attempt += 1
+                    print(e)
 
                     if attempt < max_retries:
                         await asyncio.sleep(retry_delay)
@@ -158,11 +160,6 @@ class FactScorer:
                 results["scores"].append(0)
                 results["process_time"].append(0)
                 results["estimated_costs"].append(0.0)
-
-            print(gen_decisions)
-            print(f"gen factscore: {score}")
-            print(f"gen pocess time: {gen_process_time}")
-            print(f"gen estimated cost: {cost}")
 
         return results
 
@@ -203,6 +200,7 @@ class FactScorer:
 
         ents = list(set(itertools.chain.from_iterable(atoms_entities.values())))
 
+        print(ents)
         titles, texts = await self.db.search_text_by_queries(queries=ents, k=k)
 
         corpus = []
