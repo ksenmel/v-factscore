@@ -93,7 +93,7 @@ def get_cost_from_response(response):
     usage = response.get("usage", {})
     if "estimated_cost" in usage:
         return usage["estimated_cost"]
-    
+
     return None
 
 
