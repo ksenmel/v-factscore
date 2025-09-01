@@ -4,9 +4,10 @@ import os
 
 
 class APICompletions:
-    def __init__(self, base_url, model_name):
+    def __init__(self, base_url, model_name, temperature):
         self.base_url = base_url
         self.model_name = model_name
+        self.temperature = temperature
 
     async def generate(self, messages: list):
         assert isinstance(messages, list), "prompts to the model must be list"
@@ -18,9 +19,9 @@ class APICompletions:
                 lambda x: {
                     "model": self.model_name,
                     "messages": [{"role": "user", "content": x}],
-                    "stream": False,
-                    "temperature": 0.2,
-                    "reasoning_effort": "none",
+                    # "stream": False,
+                    "temperature": self.temperature,
+                    # "reasoning_effort": "none",
                 },
                 messages,
             )
@@ -29,15 +30,17 @@ class APICompletions:
             requests=messages,
             request_url=self.base_url,
             api_key=os.environ["COMPLETIONS_API_KEY"],
-            proxy=os.environ["COMPLETIONS_PROXY"]
-            if os.environ["COMPLETIONS_PROXY"] != "None"
-            else None,
+            proxy=(
+                os.environ["COMPLETIONS_PROXY"]
+                if os.environ["COMPLETIONS_PROXY"] != "None"
+                else None
+            ),
             calculate_cost=True,
         )
         if len(results) == 0:
-            print("FAILED RESULTS")
+            print("FAILED API RESULTS")
 
-        total_cost = sum(costs)
+        total_cost = sum(cost for cost in costs if cost is not None)
 
         return results, failed, total_cost
 
@@ -64,9 +67,11 @@ class APIEmbeddingFunction:
             requests,
             self.base_url,
             api_key=os.environ["EMBEDDINGS_API_KEY"],
-            proxy=os.environ["EMBEDDINGS_PROXY"]
-            if os.environ["EMBEDDINGS_PROXY"] != "None"
-            else None,
+            proxy=(
+                os.environ["EMBEDDINGS_PROXY"]
+                if os.environ["EMBEDDINGS_PROXY"] != "None"
+                else None
+            ),
             calculate_cost=False,
         )
 
@@ -85,7 +90,11 @@ def get_content_message_from_response(response):
 
 
 def get_cost_from_response(response):
-    return response["usage"]["estimated_cost"]
+    usage = response.get("usage", {})
+    if "estimated_cost" in usage:
+        return usage["estimated_cost"]
+    
+    return None
 
 
 async def fetch_with_retries(

@@ -6,12 +6,6 @@ from factscore.api_requests import APICompletions
 SENTENCE_INSTRUCT_PROMPT = """Task: Given the following sentence, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the sentence is inadequate or doesn't contain any information, answer "No facts to extract". Follow the style of output in example.
 
 Example 1:
-Input Sentence: "Albert Einstein developed the theory of relativity, which revolutionized modern physics."
-Output:
-- Albert Einstein developed the theory of relativity
-- The theory of relativity revolutionized modern physics
-
-Example 2:
 Input Sentence: "Michael Collins (October 31, 1930 – April 28, 2021) is a retired American astronaut and test pilot who was the Command Module Pilot for the Apollo 11 mission in 1969."
 - Michael Collins was born on October 31, 1930
 - Michael Collins died on April 28, 2021
@@ -19,7 +13,7 @@ Input Sentence: "Michael Collins (October 31, 1930 – April 28, 2021) is a reti
 - Michael Collins is a retired test pilot
 - Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969
 
-Example 4:
+Example 2:
 Input sentence: In addition to his acting roles, Bateman has written and directed two short films and is currently in development on his feature debut.
 Output:
 - Bateman has acting roles.
@@ -30,23 +24,23 @@ Output:
 
 GENERATION_INSTRUCT_PROMPT = """Task: Given the following passage, break it into individual, independent facts. Ensure that each statement does not rely on context from other statements. Replace all pronouns (e.g., 'he,' 'she,' 'it,' 'they') with the corresponding nouns or proper names to make the meaning clear without additional context. Do not change anything in the citations. If the passage is inadequate or doesn't contain any information, answer "No facts to extract". Follow the style of output in example.
 Example:
-Input passage: "Erich Maria Remarque (1898–1970) was a German novelist best known for his anti-war masterpiece 'All Quiet on the Western Front (1928)', which vividly depicted the horrors of World War I from the perspective of a young German soldier. Erich Maria Remarque was born on June 22, 1898, in Osnabrück, Germany. He later changed his middle name to 'Maria' in honor of his mother and adjusted the spelling of his last name to 'Remarque'. Remarque married actress Paulette Goddard in 1958, his second marriage after his first to dancer Jutta Zambona (twice, due to divorce and remarriage). He died on September 25, 1970, in Locarno, Switzerland, leaving behind a legacy as one of the most poignant chroniclers of war’s human cost. His works remain essential readings in literature and pacifist thought."
+Input passage: "Yuri Gagarin (9 March 1934 – 27 March 1968) was a Soviet pilot and cosmonaut who, aboard the first successful crewed spaceflight, became the first person to journey into outer space. Travelling on Vostok 1, Gagarin completed one orbit of Earth on 12 April 1961, with his flight taking 108 minutes. By achieving this major milestone for the Soviet Union amidst the Space Race, he became an international celebrity and was awarded many medals and titles, including his country's highest distinction: Hero of the Soviet Union."
 Output:
-- Erich Maria Remarque was a German novelist.
-- Erich Maria Remarque was born in 1898.
-- Erich Maria Remarque was died in 1970.
-- Erich Maria Remarque is best known for his anti-war masterpiece 'All Quiet on the Western Front (1928)'.
-- 'All Quiet on the Western Front (1928)' depicted the horrors of World War I from the perspective of a young German soldier.
-- Erich Maria Remarque was born on June 22, 1898.
-- Erich Maria Remarque was born in Osnabrück, Germany.
-- Erich Maria Remarque changed his middle name to 'Maria' in honor of his mother.
-- Erich Maria Remarque adjusted the spelling of his last name to 'Remarque'. 
-- Erich Maria Remarque married actress Paulette Goddard in 1958. 
-- Erich Maria Remarque first marriage was to dancer Jutta Zambona.
-- Erich Maria Remarque died on September 25, 1970.
-- Erich Maria Remarque died in Locarno, Switzerland.
-- Erich Maria Remarque left behind a legacy as one of the most poignant chroniclers of war’s human cost. 
-- Erich Maria Remarque works remain essential readings in literature and pacifist thought.
+- Yuri Gagarin was born on 9 March 1934.
+- Yuri Gagarin died on 27 March 1968.
+- Yuri Gagarin was a Soviet pilot.
+- Yuri Gagarin was a Soviet cosmonaut.
+- Yuri Gagarin flew aboard the first successful crewed spaceflight. 
+- Yuri Gagarin was the first person to journey into outer space.
+- Yuri Gagarin completed one orbit of Earth on 12 April 1961.
+- Yuri Gagarin completed one orbit of Earth on 12 April 1961 on Vostok 1.
+- Yuri Gagarin's orbit of Earth on 12 April 1961 took 108 minutes.
+- Yuri Gagarin’s achievement was a major milestone for the Soviet Union.
+- Yuri Gagarin’s spaceflight occurred during the Space Race.
+- Yuri Gagarin became an international celebrity after the flight on 12 April 1961.
+- Yuri Gagarin was awarded many medals and titles.
+- Yuri Gagarin was awarded as Hero of the Soviet Union.
+- Hero of the Soviet Union is the country’s highest distinction.
 
 """
 
@@ -108,9 +102,11 @@ class GenerationAtomicFactGenerator:
         """
         facts = text.split("- ")[1:]
         facts = [
-            fact.strip()[:-1]
-            if len(fact) > 0 and fact.strip()[-1] == "\n"
-            else fact.strip()
+            (
+                fact.strip()[:-1]
+                if len(fact) > 0 and fact.strip()[-1] == "\n"
+                else fact.strip()
+            )
             for fact in facts
         ]
         facts = [re.sub(r"\n\n.*", "", fact, flags=re.DOTALL).strip() for fact in facts]
@@ -175,9 +171,11 @@ class AtomicFactGenerator:
         """
         facts = text.split("- ")[1:]
         facts = [
-            fact.strip()[:-1]
-            if len(fact) > 0 and fact.strip()[-1] == "\n"
-            else fact.strip()
+            (
+                fact.strip()[:-1]
+                if len(fact) > 0 and fact.strip()[-1] == "\n"
+                else fact.strip()
+            )
             for fact in facts
         ]
         facts = [re.sub(r"\n\n.*", "", fact, flags=re.DOTALL).strip() for fact in facts]

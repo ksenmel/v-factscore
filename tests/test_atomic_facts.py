@@ -4,6 +4,7 @@ from pysbd import Segmenter
 
 segmenter = Segmenter(language="en", clean=False)
 
+
 class TestTextSplitting(unittest.TestCase):
     def test_simple_sentences1(self):
         actual = 'When a child asks her mother, "Where do babies come from?", the mother said, "Well, when two people love each other very much, they decide they want to have a baby.'
