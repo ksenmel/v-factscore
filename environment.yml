@@ -1,0 +1,14 @@
+name: myenv
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - aiohttp=3.8.4
+  - faiss-cpu=1.7.3
+  - numpy=1.26.4
+  - pysbd=0.3.4
+  - tqdm=4.65.0
+  - pip
+  - pip:
+    - rank_bm25==0.2.2
