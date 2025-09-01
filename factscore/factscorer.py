@@ -47,7 +47,9 @@ class FactScorer:
             embedding_model_name: Model name for embeddings
         """
         self.completions_lm = APICompletions(
-            base_url=completions_base_url, model_name=completions_model_name, temperature=0.0
+            base_url=completions_base_url,
+            model_name=completions_model_name,
+            temperature=0.0,
         )
         self.embeddings_lm = APIEmbeddingFunction(
             base_url=embedding_base_url, model_name=embedding_model_name
@@ -118,7 +120,9 @@ class FactScorer:
                     if gen_atoms:
                         atoms_ents = self.ents_retriever.run(gen_atoms)
 
-                        gen_decisions, decisions_cost = await self.is_supported(atoms_ents, k=k)
+                        gen_decisions, decisions_cost = await self.is_supported(
+                            atoms_ents, k=k
+                        )
 
                         end_time = time.time()
 
@@ -133,7 +137,7 @@ class FactScorer:
 
                         print(gen_decisions)
                         print(f"gen factscore: {score}")
-                        print(f"gen pocess time: {gen_process_time}")
+                        print(f"gen process time: {gen_process_time}")
                         print(f"gen estimated cost: {cost}")
 
                     else:

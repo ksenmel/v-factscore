@@ -1,9 +1,10 @@
 from flair.data import Sentence
 from flair.nn import Classifier
 
+
 class EntitiesRetriever:
     def __init__(self):
-        self.tagger = Classifier.load('ner')
+        self.tagger = Classifier.load("ner")
 
     def run(self, atoms):
         assert isinstance(atoms, list), "generation must be a list"
@@ -19,10 +20,9 @@ class EntitiesRetriever:
             self.tagger.predict(sent)
 
             for label in sent.get_labels():
-                if str(label.value) == 'PER':
+                if str(label.value) == "PER":
                     ents.append(label.data_point.text)
 
             atoms_ents[atom] = ents
-        
+
         return atoms_ents
-    
