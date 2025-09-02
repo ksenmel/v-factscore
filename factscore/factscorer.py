@@ -100,6 +100,7 @@ class FactScorer:
             "scores": [],
             "process_time": [],
             "estimated_costs": [],
+            "titles": [],
         }
 
         max_retries = 3
@@ -120,8 +121,8 @@ class FactScorer:
                     if gen_atoms:
                         atoms_ents = self.ents_retriever.run(gen_atoms)
 
-                        gen_decisions, decisions_cost = await self.is_supported(
-                            atoms_ents, k=k
+                        gen_decisions, decisions_cost, gen_titles = (
+                            await self.is_supported(atoms_ents, k=k)
                         )
 
                         end_time = time.time()
@@ -134,17 +135,14 @@ class FactScorer:
                         results["scores"].append(score)
                         results["process_time"].append(gen_process_time)
                         results["estimated_costs"].append(cost)
-
-                        print(gen_decisions)
-                        print(f"gen factscore: {score}")
-                        print(f"gen pocess time: {gen_process_time}")
-                        print(f"gen estimated cost: {cost}")
+                        results["titles"].append(gen_titles)
 
                     else:
                         results["decisions"].append(None)
                         results["scores"].append(0)
                         results["process_time"].append(0)
                         results["estimated_costs"].append(0.0)
+                        results["titles"].append(None)
 
                     success = True
 
@@ -164,6 +162,7 @@ class FactScorer:
                 results["scores"].append(0)
                 results["process_time"].append(0)
                 results["estimated_costs"].append(0.0)
+                results["titles"].append(None)
 
         return results
 
@@ -172,7 +171,7 @@ class FactScorer:
         Maps `is_supported` boolean label to atoms
         """
         decisions = {}
-        prompts = await self.get_rag_prompts_and_passages(atoms_entities, k)
+        prompts, titles = await self.get_rag_prompts_and_passages(atoms_entities, k)
 
         atoms = [p[0] for p in prompts]
 
@@ -192,7 +191,7 @@ class FactScorer:
             else:
                 continue
 
-        return decisions, cost
+        return decisions, cost, titles
 
     async def get_rag_prompts_and_passages(
         self, atoms_entities, k: int
@@ -204,7 +203,6 @@ class FactScorer:
 
         ents = list(set(itertools.chain.from_iterable(atoms_entities.values())))
 
-        print(ents)
         titles, texts = await self.db.search_text_by_queries(queries=ents, k=k)
 
         corpus = []
@@ -233,4 +231,4 @@ class FactScorer:
 
             prompts.append((atom, rag_prompt))
 
-        return prompts
+        return prompts, titles
